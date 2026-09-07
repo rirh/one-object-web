@@ -24,3 +24,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </Provider>
   </React.StrictMode>,
 )
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker
+      .register(
+        `${import.meta.env.BASE_URL}sw.js?build=${encodeURIComponent(__APP_BUILD_ID__)}`,
+        { scope: import.meta.env.BASE_URL },
+      )
+      .catch((error: unknown) =>
+        console.error("PWA registration failed", error),
+      )
+  })
+}

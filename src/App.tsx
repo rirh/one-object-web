@@ -1,3 +1,5 @@
+import { LogoMark } from "@/components/logo-mark"
+import { LoginPage } from "@/views/login"
 import { lazy, Suspense } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -9,7 +11,6 @@ import {
   useLocation,
 } from "react-router"
 import {
-  BoxIcon,
   FilesIcon,
   UploadIcon,
   KeyRoundIcon,
@@ -68,7 +69,7 @@ function Shell({ user }: { user: User }) {
             to="/files"
             className="flex items-center gap-2 px-2 py-3 font-semibold"
           >
-            <BoxIcon className="size-6 text-primary" />
+            <LogoMark className="size-8" />
             One Object
           </Link>
         </SidebarHeader>
@@ -147,21 +148,7 @@ export function App() {
         <Failure error={account.error} retry={() => void account.refetch()} />
       </main>
     )
-  if (!account.data)
-    return (
-      <main className="flex min-h-svh flex-col items-center justify-center gap-6 p-6">
-        <BoxIcon className="size-10 text-primary" />
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">登录 One Object</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            统一上传与文件管理
-          </p>
-        </div>
-        <Button asChild>
-          <a href="/api/auth/oidc/start">使用 One User 登录</a>
-        </Button>
-      </main>
-    )
+  if (!account.data) return <LoginPage />
   return (
     <SidebarProvider>
       <Routes>
