@@ -22,6 +22,7 @@ const legacyPaths: Record<string, string> = {
   "/files": "/dashboard/files",
   "/uploads": "/dashboard/uploads",
   "/keys": "/dashboard/keys",
+  "/buckets": "/dashboard/buckets",
   "/storage": "/dashboard/storage",
   "/admin/users": "/dashboard/admin?section=users",
   "/admin/roles": "/dashboard/admin?section=roles",

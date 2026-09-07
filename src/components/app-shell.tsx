@@ -118,6 +118,7 @@ const localNavigation: Record<string, { icon: LucideIcon; id: string }> = {
   "/dashboard/files": { icon: FilesIcon, id: "files" },
   "/dashboard/uploads": { icon: UploadIcon, id: "uploads" },
   "/dashboard/keys": { icon: KeyRoundIcon, id: "keys" },
+  "/dashboard/buckets": { icon: DatabaseIcon, id: "buckets" },
   "/dashboard/storage": { icon: DatabaseIcon, id: "storage" },
   "/dashboard/integration": { icon: Code2Icon, id: "integration" },
   "/dashboard/admin?section=users": { icon: UsersRoundIcon, id: "admin-users" },
@@ -167,7 +168,8 @@ export function AppShell() {
   const routeKey = `${location.pathname}${location.search}`
   const isFullBleedResourcePage =
     location.pathname === "/dashboard" ||
-    location.pathname === "/dashboard/admin"
+    location.pathname === "/dashboard/admin" ||
+    location.pathname === "/dashboard/storage"
   useEffect(() => {
     if (!activeNavigation) {
       return
@@ -216,7 +218,7 @@ export function AppShell() {
 
   return (
     <SidebarProvider
-      className="h-svh overflow-hidden"
+      className="h-svh overflow-hidden bg-muted"
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 64)",
@@ -256,15 +258,15 @@ export function AppShell() {
             />
           ))}
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <SessionIdentity session={user} />
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="h-svh min-h-0 overflow-hidden md:h-[calc(100svh-1rem)]">
-        <header className="flex h-(--header-height) shrink-0 items-center overflow-visible border-b bg-muted transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+      <SidebarInset className="h-svh min-h-0 overflow-hidden bg-muted md:h-[calc(100svh-1rem)]">
+        <header className="flex h-11 shrink-0 items-center overflow-visible border-b bg-muted transition-[width,height] ease-linear md:h-(--header-height) group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
           <div className="flex h-full w-full min-w-0 items-center overflow-visible px-3 lg:px-4">
-            <SidebarTrigger className="mr-2 -ml-1" />
+            <SidebarTrigger className="mr-2 -ml-1 size-9 md:size-8" />
             <div
               className="h-full w-px shrink-0 bg-border"
               aria-hidden="true"
@@ -275,14 +277,14 @@ export function AppShell() {
               onClose={closeVisitedItem}
               onSelect={(item) => navigate(item.href)}
             />
-            <div className="ml-2 flex h-full shrink-0 items-center gap-1.5 overflow-visible">
+            <div className="ml-1 flex h-full shrink-0 items-center gap-1.5 overflow-visible md:ml-2">
               <LanguageToggle />
               <ThemeToggle />
             </div>
           </div>
         </header>
 
-        <main className="@container/main flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+        <main className="@container/main flex min-h-0 flex-1 flex-col overflow-hidden bg-muted">
           <DashboardPageTransition routeKey={routeKey}>
             <div
               className={cn(
@@ -308,6 +310,7 @@ function NavigationGroupSection({
   activeItem: NavigationItem | null
   group: NavigationGroup
 }) {
+  const { isMobile, setOpenMobile } = useSidebar()
   const groupLabel = group.label
   const items = (
     <SidebarGroupContent>
@@ -322,6 +325,10 @@ function NavigationGroupSection({
               <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
                 <Link
                   aria-current={isActive ? "page" : undefined}
+                  className="h-11 md:h-8"
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false)
+                  }}
                   to={item.href}
                 >
                   <Icon aria-hidden="true" />
@@ -415,7 +422,7 @@ function RouteTags({
   }
 
   return (
-    <div ref={rootRef} className="tags-view-chrome">
+    <div ref={rootRef} className="tags-view-chrome min-w-0 flex-1">
       <button
         type="button"
         className="tags-view-chrome__nav tags-view-chrome__nav--left"

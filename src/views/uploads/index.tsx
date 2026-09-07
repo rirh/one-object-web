@@ -7,7 +7,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import { PageHeader } from "@/components/page-header"
 import { useCurrentTime } from "@/hooks/use-current-time"
 import { fromUnixTime, isBefore } from "date-fns"
 import { useEffect, useRef, useState } from "react"
@@ -91,11 +90,6 @@ export default function UploadsPage() {
   const busy = upload.isPending || abort.isPending
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        eyebrow="对象存储"
-        title="上传文件"
-        description="支持大文件分片、暂停和失败续传。上传任务保留 24 小时。"
-      />
       <Field className="max-w-xl">
         <FieldLabel>存储接入</FieldLabel>
         <Select value={storageId} onValueChange={setStorageId} disabled={busy}>
@@ -168,7 +162,7 @@ export default function UploadsPage() {
         </div>
       ) : null}
       {upload.error && !paused ? <Failure error={upload.error} /> : null}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-medium">未完成的上传</h2>
         <Button
           variant="outline"
@@ -202,8 +196,8 @@ export default function UploadsPage() {
                   {date(item.expires_at)} 到期
                 </p>
               </div>
-              <div className="flex flex-wrap items-end gap-2">
-                <Field className="w-52">
+              <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
+                <Field className="w-full sm:w-52">
                   <FieldLabel htmlFor={`resume-${item.id}`}>
                     选择原文件继续
                   </FieldLabel>

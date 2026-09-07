@@ -67,7 +67,7 @@ export function ResourceTableFooter<TData>({
               : `${firstRow}-${lastRow} of ${totalRows}`}
             {isFetching ? (zh ? " · 更新中" : " · Updating") : ""}
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <Select
               value={String(pageSize)}
               onValueChange={(value) => table.setPageSize(Number(value))}
@@ -127,7 +127,7 @@ export function ResourceTableFooter<TData>({
             showPaginationFooter ? "bottom-16" : "bottom-4",
           )}
         >
-          <div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl bg-popover px-3 py-2 text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10">
+          <div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-center gap-2 rounded-xl bg-popover px-3 py-2 text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10">
             <span className="text-muted-foreground">
               {zh ? "已选择 " : "Selected "}
               <span className="font-medium tabular-nums">

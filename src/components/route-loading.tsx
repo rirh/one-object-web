@@ -2,7 +2,7 @@ import { SweepShine } from "@/components/sweep-shine"
 
 export function RouteLoading() {
   return (
-    <main className="fixed inset-0 z-50 flex min-h-svh items-center justify-center bg-background px-6 py-8 text-foreground">
+    <main className="fixed inset-0 z-50 flex min-h-svh items-center justify-center bg-muted px-6 py-8 text-foreground">
       <section
         aria-busy="true"
         aria-live="polite"

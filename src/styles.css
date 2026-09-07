@@ -124,11 +124,11 @@
   }
 
   body {
-    @apply bg-background font-sans text-foreground antialiased;
+    @apply bg-muted font-sans text-foreground antialiased;
   }
 
   html {
-    @apply font-sans;
+    @apply bg-muted font-sans;
   }
 
   button:not([disabled]),
@@ -444,5 +444,30 @@
   .tags-view-chrome__close svg {
     width: 11px;
     height: 11px;
+  }
+
+  @media (max-width: 767px) {
+    .tags-view-chrome {
+      --tags-bar-height: 40px;
+      --tags-tab-height: 38px;
+    }
+
+    .tags-view-chrome__item {
+      padding-right: 10px;
+      padding-left: 10px;
+    }
+
+    .tags-view-chrome__item.active {
+      padding-right: 12px;
+      padding-left: 12px;
+    }
+
+    .tags-view-chrome__item.is-closable .tags-view-chrome__close {
+      width: 16px;
+      margin-left: 3px;
+      opacity: 0.68;
+      pointer-events: auto;
+      transform: scale(1);
+    }
   }
 }

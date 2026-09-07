@@ -8,7 +8,6 @@ import {
   KeyRoundIcon,
   UploadIcon,
 } from "lucide-react"
-import { PageHeader } from "@/components/page-header"
 import { Loading, Failure, NoItems } from "@/components/async-state"
 import { SweepShine } from "@/components/sweep-shine"
 import { Button } from "@/components/ui/button"
@@ -82,12 +81,10 @@ export default function Dashboard() {
       aria-labelledby="dashboard-heading"
       className="flex w-full flex-col gap-5 p-4 lg:gap-6 lg:p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader
-          eyebrow="对象存储概览"
-          title={<span id="dashboard-heading">仪表盘</span>}
-          description="查看文件、应用密钥与存储配置，管理对象存储资源。"
-        />
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <h1 className="sr-only" id="dashboard-heading">
+          仪表盘
+        </h1>
         {can("object:uploads:write") && (
           <Button asChild>
             <Link to="/dashboard/uploads">
@@ -118,7 +115,7 @@ export default function Dashboard() {
             storage.isPending,
             storage.data?.items.length,
           )}
-          detail={canStorage ? "当前账户的厂商接入配置" : "暂无存储查看权限"}
+          detail={canStorage ? "当前账户已接入的存储桶" : "暂无存储查看权限"}
         />
         <MetricCard
           label="启用存储"
@@ -163,7 +160,7 @@ export default function Dashboard() {
                 description="上传文件后，会在这里显示。"
               />
             ) : (
-              <Table>
+              <Table className="min-w-[28rem]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>文件名</TableHead>
@@ -235,11 +232,11 @@ export default function Dashboard() {
                 ) : (
                   <NoItems
                     title="尚未接入存储"
-                    description="在厂商接入中新增存储桶。"
+                    description="在厂商管理中添加账号，然后到桶管理同步或创建存储桶。"
                   />
                 )}
                 <Button asChild variant="outline">
-                  <Link to="/dashboard/storage">管理厂商接入</Link>
+                  <Link to="/dashboard/storage">厂商管理</Link>
                 </Button>
               </div>
             )}

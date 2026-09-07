@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/page-header"
 import { useCurrentTime } from "@/hooks/use-current-time"
 import { fromUnixTime, isBefore } from "date-fns"
 import { authPermissionsQuery } from "@/views/account/permissions-api"
@@ -77,11 +76,6 @@ export default function KeysPage() {
   })
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        eyebrow="对象存储"
-        title="应用密钥"
-        description="每个密钥使用独立的应用空间，只能访问自己上传的文件。"
-      />
       {permissions.includes("object:keys:create") && (
         <form
           className="max-w-xl"

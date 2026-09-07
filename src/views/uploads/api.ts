@@ -26,11 +26,15 @@ export async function uploadFile(
   storageId?: string,
 ) {
   if (!file.size) throw new Error("请选择非空文件")
+  const policy = id
+    ? undefined
+    : await request<UploadPolicy>("/api/uploads/policy", { signal })
   const state = id
     ? await getUpload(id, signal)
     : await request<UploadState>("/api/uploads", {
         ...json({
           storage_id: storageId,
+          part_size: selectPartSize(file.size, policy!),
           original_filename: file.name,
           file_size: file.size,
           mime_type: file.type || "application/octet-stream",
@@ -122,4 +126,41 @@ async function retryUpload<T>(
       })
     }
   }
+}
+
+export type UploadPolicy = {
+  min_part_size: number
+  max_part_size: number
+  default_part_size: number
+  max_parts: number
+  max_file_size: number
+}
+
+export function selectPartSize(
+  fileSize: number,
+  policy: UploadPolicy,
+  device: { deviceMemory?: number; hardwareConcurrency?: number } = navigator,
+) {
+  if (fileSize > policy.max_file_size) throw new Error("文件超过上传大小上限")
+  const mib = 1024 * 1024
+  // Browser hints are approximate; missing hints retain the server default.
+  let preferred = policy.default_part_size
+  if (
+    (device.deviceMemory && device.deviceMemory <= 2) ||
+    (device.hardwareConcurrency && device.hardwareConcurrency <= 2)
+  ) {
+    preferred = 5 * mib
+  } else if (
+    (device.deviceMemory && device.deviceMemory <= 4) ||
+    (device.hardwareConcurrency && device.hardwareConcurrency <= 4)
+  ) {
+    preferred = 8 * mib
+  }
+  const required = Math.ceil(fileSize / policy.max_parts)
+  if (required > policy.max_part_size)
+    throw new Error("文件需要的分片数超过上限")
+  return Math.min(
+    policy.max_part_size,
+    Math.max(policy.min_part_size, preferred, required),
+  )
 }

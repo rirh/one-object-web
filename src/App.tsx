@@ -15,6 +15,7 @@ const Account = lazy(() => import("@/views/account"))
 const Files = lazy(() => import("@/views/files"))
 const Uploads = lazy(() => import("@/views/uploads"))
 const Keys = lazy(() => import("@/views/keys"))
+const Buckets = lazy(() => import("@/views/buckets"))
 const Storage = lazy(() => import("@/views/storage"))
 const Integration = lazy(() => import("@/views/integration"))
 function RequirePermission({ code }: { code: string }) {
@@ -68,15 +69,20 @@ export function App() {
           <Route element={<RequirePermission code="object:storage:read" />}>
             <Route path="storage" element={<Storage />} />
           </Route>
+          <Route element={<RequirePermission code="object:bucket:read" />}>
+            <Route path="buckets" element={<Buckets />} />
+          </Route>
           <Route path="integration" element={<Integration />} />
         </Route>
-        {["files", "uploads", "keys", "storage", "integration"].map((path) => (
-          <Route
-            key={path}
-            path={path}
-            element={<Navigate replace to={`/dashboard/${path}`} />}
-          />
-        ))}
+        {["files", "uploads", "keys", "storage", "buckets", "integration"].map(
+          (path) => (
+            <Route
+              key={path}
+              path={path}
+              element={<Navigate replace to={`/dashboard/${path}`} />}
+            />
+          ),
+        )}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { uploadFile } from "./api"
+import { uploadFile, selectPartSize } from "./api"
 const upload = {
   id: "test",
   original_filename: "a.txt",
@@ -92,6 +92,7 @@ it("retries transient part failures without recreating the upload", async () => 
   vi.useFakeTimers()
   const fetch = vi
     .fn()
+    .mockResolvedValueOnce(Response.json(policy))
     .mockResolvedValueOnce(Response.json({ upload, parts: [] }))
     .mockResolvedValueOnce(Response.json({ message: "busy" }, { status: 503 }))
     .mockResolvedValueOnce(Response.json({ part: {} }))
@@ -111,7 +112,7 @@ it("retries transient part failures without recreating the upload", async () => 
     expect(
       fetch.mock.calls.filter((c) => c[0] === "/api/uploads"),
     ).toHaveLength(1)
-    expect(JSON.parse(fetch.mock.calls[0][1].body).storage_id).toBe(
+    expect(JSON.parse(fetch.mock.calls[1][1].body).storage_id).toBe(
       "connection-test",
     )
     expect(
@@ -120,4 +121,25 @@ it("retries transient part failures without recreating the upload", async () => 
   } finally {
     vi.useRealTimers()
   }
+})
+
+const policy = {
+  min_part_size: 5 * 1024 ** 2,
+  max_part_size: 16 * 1024 ** 2,
+  default_part_size: 16 * 1024 ** 2,
+  max_parts: 10000,
+  max_file_size: 16 * 1024 ** 2 * 10000,
+}
+it("chooses sizes from device hints and respects server bounds and part count", () => {
+  expect(selectPartSize(100, policy, {})).toBe(policy.default_part_size)
+  expect(selectPartSize(100, policy, { deviceMemory: 2 })).toBe(
+    policy.min_part_size,
+  )
+  expect(selectPartSize(100, policy, { hardwareConcurrency: 4 })).toBe(
+    8 * 1024 ** 2,
+  )
+  expect(
+    selectPartSize(policy.max_file_size, policy, { deviceMemory: 2 }),
+  ).toBe(policy.max_part_size)
+  expect(() => selectPartSize(policy.max_file_size + 1, policy, {})).toThrow()
 })

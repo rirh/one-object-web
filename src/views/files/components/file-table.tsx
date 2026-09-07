@@ -105,7 +105,7 @@ export function FileTable({
   })
   return (
     <div className="min-w-0 overflow-x-auto rounded-md border">
-      <Table>
+      <Table className="min-w-[40rem]">
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>

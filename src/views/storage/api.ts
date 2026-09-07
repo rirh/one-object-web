@@ -4,6 +4,7 @@ export const PROVIDERS = {
   aws: "AWS S3",
   aliyun: "阿里云 OSS",
   tencent: "腾讯云 COS",
+  oci: "甲骨文云",
 } as const
 export type Provider = keyof typeof PROVIDERS
 export type StorageConnection = {
@@ -29,8 +30,6 @@ export const listConnections = (signal?: AbortSignal) =>
   request<{ items: StorageConnection[] }>("/api/storage/connections", {
     signal,
   })
-export const createConnection = (input: ConnectionInput) =>
-  request<{ id: string }>("/api/storage/connections", json(input))
 export const updateConnection = (
   id: string,
   input: {
@@ -44,8 +43,31 @@ export const updateConnection = (
     ...json(input),
     method: "PUT",
   })
-export const checkConnection = (id: string) =>
+export type StorageAccount = Omit<StorageConnection, "bucket"> & {
+  synced_at: number | null
+  bucket_count: number
+}
+export const listAccounts = (signal?: AbortSignal) =>
+  request<{ items: StorageAccount[] }>("/api/storage/accounts", { signal })
+export const createAccount = ({ bucket: _bucket, ...input }: ConnectionInput) =>
+  request<{ id: string }>("/api/storage/accounts", json(input))
+export const updateAccount = (
+  id: string,
+  input: Parameters<typeof updateConnection>[1],
+) =>
+  request<void>(`/api/storage/accounts/${id}`, {
+    ...json(input),
+    method: "PUT",
+  })
+export const checkAccount = (id: string) =>
   request<{ ok: boolean; message: string }>(
-    `/api/storage/connections/${id}/check`,
+    `/api/storage/accounts/${id}/check`,
     { method: "POST" },
   )
+
+export const deleteAccount = (id: string) =>
+  request<void>(`/api/storage/accounts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  })
+export const deleteAccounts = (ids: string[]) =>
+  request<void>("/api/storage/accounts/bulk-delete", json({ ids }))

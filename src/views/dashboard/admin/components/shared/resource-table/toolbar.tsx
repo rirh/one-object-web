@@ -50,6 +50,7 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
   isFetching,
   onCreate,
   onRefresh,
+  onRefreshAnimationIteration,
   onSearchChange,
   onStatusFilterChange,
   onToggleExpanded,
@@ -68,6 +69,7 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
   hasExpandableRows: boolean
   isFetching: boolean
   onCreate?: () => void
+  onRefreshAnimationIteration?: () => void
   onRefresh: () => void
   onSearchChange: (value: string) => void
   onStatusFilterChange: (value: TFilter) => void
@@ -134,7 +136,7 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
           />
         </InputGroup>
       </div>
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           type="button"
           variant="outline"
@@ -145,6 +147,7 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
           <RefreshCwIcon
             data-icon="inline-start"
             className={cn(isFetching && "animate-spin")}
+            onAnimationIteration={onRefreshAnimationIteration}
           />
           {zh ? "刷新" : "Refresh"}
         </Button>

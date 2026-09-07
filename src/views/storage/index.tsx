@@ -1,29 +1,38 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useForm } from "react-hook-form"
-import { PlusIcon } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { connectionSchema } from "./schema"
+import { ProviderHelp } from "./provider-help"
+import { AnimatedSegmentedTabs } from "@/components/ui/animated-segmented-tabs"
+import { useForm, useWatch } from "react-hook-form"
+import {
+  CircleHelpIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+} from "lucide-react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { ResourceTable } from "@/views/dashboard/admin/components/shared/resource-table"
+import { Switch } from "@/components/ui/switch"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
-import { PageHeader } from "@/components/page-header"
-import { Loading, Failure, NoItems } from "@/components/async-state"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Field, FieldLabel, FieldDescription } from "@/components/ui/field"
-import { Badge } from "@/components/ui/badge"
+import { Field, FieldLabel, FieldError } from "@/components/ui/field"
 import {
-  Table,
-  TableHeader,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select"
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -37,137 +46,305 @@ import { SweepShine } from "@/components/sweep-shine"
 import { authPermissionsQuery } from "@/views/account/permissions-api"
 import {
   PROVIDERS,
-  listConnections,
-  createConnection,
-  updateConnection,
-  checkConnection,
+  listAccounts,
+  createAccount,
+  updateAccount,
+  checkAccount,
+  deleteAccount,
+  deleteAccounts,
   type ConnectionInput,
-  type StorageConnection,
-  type Provider,
+  type StorageAccount,
 } from "./api"
 
+type AccountConfirmation = {
+  kind: "disable" | "delete"
+  accounts: StorageAccount[]
+  clearSelection?: () => void
+}
 export default function StoragePage() {
   const client = useQueryClient()
-  const [editor, setEditor] = useState<StorageConnection | "new" | null>(null)
+  const [editor, setEditor] = useState<StorageAccount | "new" | null>(null)
+  const [confirmation, setConfirmation] = useState<AccountConfirmation | null>(
+    null,
+  )
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "disabled"
+  >("all")
   const access = useQuery(authPermissionsQuery)
-  const canWrite = access.data?.permissions.includes("object:storage:write")
+  const canWrite =
+    access.data?.permissions.includes("object:storage:write") ?? false
   const query = useQuery({
-    queryKey: ["storage-connections"],
-    queryFn: ({ signal }) => listConnections(signal),
+    queryKey: ["storage-accounts"],
+    queryFn: ({ signal }) => listAccounts(signal),
   })
-  const refresh = () => {
-    void client.invalidateQueries({ queryKey: ["storage-connections"] })
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshResult = useRef<{ error: Error | null } | null>(null)
+  const reloadAccounts = async () => {
+    refreshResult.current = null
+    setRefreshing(true)
+    try {
+      const result = await query.refetch({ throwOnError: true })
+      refreshResult.current = { error: result.error }
+    } catch (error) {
+      refreshResult.current = {
+        error: error instanceof Error ? error : new Error("刷新失败，请重试"),
+      }
+    }
+  }
+  const finishRefreshRotation = () => {
+    const result = refreshResult.current
+    if (!result) return
+    refreshResult.current = null
+    setRefreshing(false)
+    if (result.error) toast.error(result.error.message)
+    else toast.success("厂商列表已刷新")
+  }
+  const refresh = async () => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: ["storage-accounts"] }),
+      client.invalidateQueries({ queryKey: ["storage-connections"] }),
+      client.invalidateQueries({ queryKey: ["storage-buckets"] }),
+    ])
   }
   const toggle = useMutation({
-    mutationFn: (c: StorageConnection) =>
-      updateConnection(c.id, { name: c.name, enabled: !c.enabled }),
-    onSuccess: refresh,
-    onError: (e) => toast.error(e.message),
+    mutationFn: (account: StorageAccount) =>
+      updateAccount(account.id, {
+        name: account.name,
+        enabled: !account.enabled,
+      }),
+    onSuccess: async (_, account) => {
+      setConfirmation(null)
+      toast.success(account.enabled ? "厂商已停用" : "厂商已启用")
+      await refresh()
+    },
+    onError: (error) => toast.error(error.message),
+  })
+  const remove = useMutation({
+    mutationFn: (accounts: StorageAccount[]) =>
+      accounts.length === 1
+        ? deleteAccount(accounts[0].id)
+        : deleteAccounts(accounts.map((account) => account.id)),
+    onSuccess: async (_, accounts) => {
+      confirmation?.clearSelection?.()
+      setConfirmation(null)
+      toast.success(`已删除 ${accounts.length} 个厂商配置`)
+      await refresh()
+    },
+    onError: (error) => toast.error(error.message),
   })
   const check = useMutation({
-    mutationFn: checkConnection,
-    onSuccess: (r) => toast.success(r.message),
-    onError: (e) => toast.error(e.message),
+    mutationFn: checkAccount,
+    onSuccess: (result) => toast.success(result.message),
+    onError: (error) => toast.error(error.message),
   })
-  return (
-    <div className="flex min-w-0 flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader
-          eyebrow="对象存储"
-          title="厂商接入"
-          description="接入已有存储桶，支持同一厂商配置多个存储。"
-        />
-        {canWrite && (
-          <Button onClick={() => setEditor("new")}>
-            <PlusIcon />
-            新增接入
-          </Button>
-        )}
-      </div>
-      {query.isPending ? (
-        <Loading />
-      ) : query.error ? (
-        <Failure error={query.error} retry={() => void query.refetch()} />
-      ) : !query.data.items.length ? (
-        <NoItems
-          title="尚未接入存储厂商"
-          description="新增 Cloudflare R2、AWS S3、阿里云 OSS 或腾讯云 COS 存储桶后，即可上传文件。"
-        />
-      ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {["名称", "厂商", "Bucket / 区域", "状态", "操作"].map((t) => (
-                  <TableHead key={t}>{t}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {query.data.items.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell>{PROVIDERS[c.provider]}</TableCell>
-                  <TableCell>
-                    <div>{c.bucket}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {c.region}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={c.enabled ? "secondary" : "outline"}>
-                      {c.enabled ? "启用" : "停用"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={check.isPending}
-                        onClick={() => check.mutate(c.id)}
-                      >
-                        <SweepShine
-                          active={check.isPending && check.variables === c.id}
-                        >
-                          检测连接
-                        </SweepShine>
-                      </Button>
-                      {canWrite && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditor(c)}
-                          >
-                            编辑
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={toggle.isPending}
-                            onClick={() => toggle.mutate(c)}
-                          >
-                            {c.enabled ? "停用" : "启用"}
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+  const keyword = search.trim().toLowerCase()
+  const data = (query.data?.items ?? []).filter(
+    (account) =>
+      (statusFilter === "all" ||
+        account.enabled === (statusFilter === "active")) &&
+      (!keyword ||
+        [account.name, PROVIDERS[account.provider], account.region].some(
+          (value) => value.toLowerCase().includes(keyword),
+        )),
+  )
+  const columns: ColumnDef<StorageAccount>[] = [
+    {
+      accessorKey: "name",
+      header: "厂商名称",
+      cell: ({ row: { original: account } }) => (
+        <div className="flex min-w-40 items-center gap-2">
+          <img
+            src={`/storage-providers/${account.provider}.svg`}
+            alt=""
+            className="size-5 shrink-0 object-contain"
+          />
+          <span
+            className="truncate font-medium"
+            title={PROVIDERS[account.provider]}
+          >
+            {account.name}
+          </span>
         </div>
-      )}
+      ),
+      meta: { label: "厂商名称", headerClassName: "w-[45%]" },
+    },
+    {
+      accessorKey: "bucket_count",
+      header: "桶数量",
+      cell: ({ row: { original: account } }) => (
+        <span className="tabular-nums" title="最近同步到本地的存储桶数量">
+          {account.bucket_count == null ||
+          (!account.synced_at && account.bucket_count === 0)
+            ? "未同步"
+            : `${account.bucket_count} 个`}
+        </span>
+      ),
+      meta: { label: "桶数量" },
+    },
+    {
+      accessorKey: "enabled",
+      header: "状态",
+      cell: ({ row: { original: account } }) => (
+        <div className="flex items-center gap-2">
+          <Switch
+            size="sm"
+            aria-label={`${account.name} 启用状态`}
+            checked={account.enabled}
+            disabled={!canWrite || toggle.isPending || remove.isPending}
+            onCheckedChange={(enabled) => {
+              if (enabled) toggle.mutate(account)
+              else setConfirmation({ kind: "disable", accounts: [account] })
+            }}
+          />
+          <span className="text-xs text-muted-foreground">
+            {account.enabled ? "启用" : "停用"}
+          </span>
+        </div>
+      ),
+      meta: { label: "状态" },
+    },
+  ]
+  const pending = toggle.isPending || remove.isPending
+  return (
+    <section className="flex min-h-0 flex-1 flex-col">
+      <ResourceTable
+        compact
+        columns={columns}
+        data={data}
+        getRowId={(account) => account.id}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="搜索厂商名称"
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        isLoading={query.isPending}
+        isFetching={query.isFetching || refreshing}
+        error={query.error}
+        onRefresh={() => void reloadAccounts()}
+        onRefreshAnimationIteration={finishRefreshRotation}
+        onCreate={canWrite ? () => setEditor("new") : undefined}
+        createLabel="新增接入"
+        emptyLabel="暂无厂商配置"
+        isBulkDeleting={remove.isPending}
+        onBulkDelete={
+          canWrite
+            ? (accounts, clearSelection) =>
+                setConfirmation({ kind: "delete", accounts, clearSelection })
+            : undefined
+        }
+        renderRowActions={(account) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-7"
+                aria-label={`${account.name} 操作`}
+                disabled={remove.isPending}
+              >
+                {check.isPending && check.variables === account.id ? (
+                  <RefreshCwIcon className="animate-spin" />
+                ) : (
+                  <MoreHorizontalIcon />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  disabled={check.isPending || !account.enabled}
+                  onSelect={() => check.mutate(account.id)}
+                >
+                  <RefreshCwIcon />
+                  检测连接
+                </DropdownMenuItem>
+                {canWrite && (
+                  <DropdownMenuItem onSelect={() => setEditor(account)}>
+                    <PencilIcon />
+                    编辑
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
+              {canWrite && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() =>
+                      setConfirmation({ kind: "delete", accounts: [account] })
+                    }
+                  >
+                    <Trash2Icon />
+                    删除
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      />
       {editor && (
         <ConnectionEditor
           value={editor}
           close={() => setEditor(null)}
-          saved={refresh}
+          saved={() => void refresh()}
         />
       )}
-    </div>
+      <ResponsiveDialog
+        open={!!confirmation}
+        onOpenChange={(open) => {
+          if (!open && !pending) setConfirmation(null)
+        }}
+      >
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>
+              {confirmation?.kind === "disable"
+                ? "停用厂商"
+                : `删除 ${confirmation?.accounts.length ?? 0} 个厂商配置`}
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
+              {confirmation?.kind === "disable"
+                ? "停用后，该厂商不能用于新上传及云端桶管理；已有文件和未完成上传仍保留。"
+                : "删除所选厂商及其本地桶接入配置，云端桶和对象不受影响。有关联文件或未完成上传时，整批操作将被拒绝。"}
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogBody>
+            <ul className="max-h-48 space-y-1 overflow-y-auto text-sm">
+              {confirmation?.accounts.map((account) => (
+                <li key={account.id}>{account.name}</li>
+              ))}
+            </ul>
+          </ResponsiveDialogBody>
+          <ResponsiveDialogFooter>
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() => setConfirmation(null)}
+            >
+              取消
+            </Button>
+            <Button
+              variant={
+                confirmation?.kind === "delete" ? "destructive" : "default"
+              }
+              disabled={pending}
+              onClick={() => {
+                if (!confirmation) return
+                if (confirmation.kind === "disable")
+                  toggle.mutate(confirmation.accounts[0])
+                else remove.mutate(confirmation.accounts)
+              }}
+            >
+              <SweepShine active={pending}>
+                {confirmation?.kind === "disable" ? "确认停用" : "确认删除"}
+              </SweepShine>
+            </Button>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
+    </section>
   )
 }
 function ConnectionEditor({
@@ -175,34 +352,35 @@ function ConnectionEditor({
   close,
   saved,
 }: {
-  value: StorageConnection | "new"
+  value: StorageAccount | "new"
   close: () => void
   saved: () => void
 }) {
   const existing = value === "new" ? null : value
-  const [provider, setProvider] = useState<Provider>(existing?.provider ?? "r2")
   const form = useForm<ConnectionInput>({
+    resolver: zodResolver(connectionSchema(Boolean(existing), true)),
     defaultValues: {
       name: existing?.name ?? "",
-      provider,
-      bucket: existing?.bucket ?? "",
+      provider: existing?.provider ?? "r2",
+      bucket: "",
       region: existing?.region ?? "",
       account_id: "",
       access_key: "",
       secret_key: "",
     },
   })
+  const provider = useWatch({ control: form.control, name: "provider" })
   const save = useMutation({
     mutationFn: async (input: ConnectionInput) => {
       await (existing
-        ? updateConnection(existing.id, {
+        ? updateAccount(existing.id, {
             name: input.name,
             enabled: existing.enabled,
             ...(input.access_key || input.secret_key
               ? { access_key: input.access_key, secret_key: input.secret_key }
               : {}),
           })
-        : createConnection({ ...input, provider }))
+        : createAccount(input))
     },
     onSuccess: () => {
       toast.success("存储接入已保存")
@@ -218,124 +396,219 @@ function ConnectionEditor({
         if (!open && !save.isPending) close()
       }}
     >
-      <ResponsiveDialogContent>
+      <ResponsiveDialogContent className="flex max-h-[90svh] flex-col sm:max-w-xl">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>
             {existing ? "编辑接入" : "新增厂商接入"}
           </ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            密钥仅保存在服务端并加密存储。配置区域和 Bucket
-            后，服务地址由系统生成。
+            配置厂商账号，密钥在服务端加密保存。保存后可在桶管理中同步或创建存储桶。
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
-        <form onSubmit={form.handleSubmit((input) => save.mutate(input))}>
-          <ResponsiveDialogBody className="grid gap-4">
+        <form
+          className="flex min-h-0 flex-col"
+          noValidate
+          onSubmit={form.handleSubmit((input) => save.mutate(input))}
+        >
+          <ResponsiveDialogBody className="grid gap-x-4 gap-y-3 overflow-y-auto sm:grid-cols-2 [&_[data-slot=field]]:gap-1.5 [&_[data-slot=input]]:h-8">
+            {!existing && (
+              <Field className="sm:col-span-2">
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel>
+                    存储厂商{" "}
+                    <span className="text-destructive" aria-hidden="true">
+                      *
+                    </span>
+                  </FieldLabel>
+                  <ProviderHelp provider={provider} />
+                </div>
+                <AnimatedSegmentedTabs
+                  label="存储厂商"
+                  value={provider}
+                  options={Object.entries(PROVIDERS).map(([value, label]) => ({
+                    value: value as ConnectionInput["provider"],
+                    label: (
+                      <>
+                        <img
+                          src={`/storage-providers/${value}.svg`}
+                          alt=""
+                          aria-hidden="true"
+                          className="size-4 shrink-0 object-contain"
+                        />
+                        {label}
+                      </>
+                    ),
+                    disabled: save.isPending,
+                  }))}
+                  onValueChange={(value) => {
+                    form.setValue("provider", value, { shouldDirty: true })
+                    form.clearErrors()
+                  }}
+                  className="min-w-0"
+                  listClassName="grid h-auto w-fit max-w-full grid-cols-2 sm:flex sm:flex-wrap"
+                  triggerClassName="h-7 flex-none gap-1.5 px-2 text-xs"
+                />
+              </Field>
+            )}
             <Field>
-              <FieldLabel htmlFor="connection-name">名称</FieldLabel>
+              <FieldLabel htmlFor="connection-name">
+                名称{" "}
+                <span className="text-destructive" aria-hidden="true">
+                  *
+                </span>
+              </FieldLabel>
               <Input
                 id="connection-name"
+                aria-invalid={!!form.formState.errors.name}
+                aria-describedby="connection-name-error"
                 required
                 maxLength={100}
                 {...form.register("name")}
               />
+              <FieldError
+                id="connection-name-error"
+                errors={[form.formState.errors.name]}
+              />
             </Field>
             {!existing && (
               <>
-                <Field>
-                  <FieldLabel>存储厂商</FieldLabel>
-                  <Select
-                    value={provider}
-                    onValueChange={(v) => setProvider(v as Provider)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROVIDERS).map(([id, label]) => (
-                        <SelectItem key={id} value={id}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="connection-bucket">Bucket</FieldLabel>
-                  <Input
-                    id="connection-bucket"
-                    required
-                    {...form.register("bucket")}
-                    placeholder={
-                      provider === "tencent"
-                        ? "example-1250000000"
-                        : "example-bucket"
-                    }
-                  />
-                </Field>
-                {provider === "r2" ? (
+                {(provider === "r2" || provider === "oci") && (
                   <Field>
                     <FieldLabel htmlFor="connection-account">
-                      Cloudflare Account ID
+                      {provider === "oci"
+                        ? "Object Storage Namespace"
+                        : "Cloudflare Account ID"}{" "}
+                      <span className="text-destructive" aria-hidden="true">
+                        *
+                      </span>
                     </FieldLabel>
                     <Input
                       id="connection-account"
+                      aria-invalid={!!form.formState.errors.account_id}
+                      aria-describedby="connection-account-error"
                       required
-                      maxLength={32}
+                      maxLength={provider === "oci" ? 100 : 32}
                       {...form.register("account_id")}
                     />
+                    <FieldError
+                      id="connection-account-error"
+                      errors={[form.formState.errors.account_id]}
+                    />
                   </Field>
-                ) : (
+                )}
+                {provider !== "r2" && (
                   <Field>
-                    <FieldLabel htmlFor="connection-region">区域</FieldLabel>
+                    <FieldLabel htmlFor="connection-region">
+                      {provider === "oci" ? "区域" : "默认区域（可选）"}
+                      {provider === "oci" && (
+                        <span className="text-destructive" aria-hidden="true">
+                          {" "}
+                          *
+                        </span>
+                      )}
+                    </FieldLabel>
                     <Input
                       id="connection-region"
-                      required
+                      aria-invalid={!!form.formState.errors.region}
+                      aria-describedby="connection-region-error"
+                      required={provider === "oci"}
                       {...form.register("region")}
                       placeholder={
                         provider === "aws"
                           ? "us-east-1"
                           : provider === "aliyun"
                             ? "cn-hangzhou"
-                            : "ap-guangzhou"
+                            : provider === "oci"
+                              ? "ap-singapore-1"
+                              : "ap-guangzhou"
                       }
+                    />
+                    <FieldError
+                      id="connection-region-error"
+                      errors={[form.formState.errors.region]}
                     />
                   </Field>
                 )}
               </>
             )}
             {existing && (
-              <p className="text-sm text-muted-foreground">
-                {PROVIDERS[existing.provider]} · {existing.bucket} ·{" "}
-                {existing.region}。存储位置固定，迁移时请新增接入。
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                {PROVIDERS[existing.provider]} · {existing.region}
+                。默认区域用于请求签名，各桶可使用不同区域。
               </p>
             )}
             <Field>
               <FieldLabel htmlFor="connection-access">
                 {provider === "tencent" ? "SecretId" : "Access Key ID"}
+                {!existing && (
+                  <span className="text-destructive" aria-hidden="true">
+                    *
+                  </span>
+                )}
               </FieldLabel>
               <Input
                 id="connection-access"
+                aria-invalid={!!form.formState.errors.access_key}
+                aria-describedby="connection-access-error"
                 required={!existing}
                 autoComplete="off"
                 {...form.register("access_key")}
               />
+              <FieldError
+                id="connection-access-error"
+                errors={[form.formState.errors.access_key]}
+              />
             </Field>
             <Field>
-              <FieldLabel htmlFor="connection-secret">
-                {provider === "tencent" ? "SecretKey" : "Secret Access Key"}
-              </FieldLabel>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel htmlFor="connection-secret">
+                  {provider === "tencent" ? "SecretKey" : "Secret Access Key"}
+                  {!existing && (
+                    <span className="text-destructive" aria-hidden="true">
+                      *
+                    </span>
+                  )}
+                </FieldLabel>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger
+                      asChild
+                      onFocus={(event) => event.preventDefault()}
+                    >
+                      <button
+                        type="button"
+                        aria-label="密钥配置说明"
+                        className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <CircleHelpIcon className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      showArrow={false}
+                      side="top"
+                      sideOffset={6}
+                      className="max-w-xs leading-relaxed"
+                    >
+                      {existing
+                        ? "两个密钥字段留空可保留原凭证。"
+                        : "同步需要列桶权限，创建和删除需要对应的桶管理权限。"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Input
                 id="connection-secret"
+                aria-invalid={!!form.formState.errors.secret_key}
+                aria-describedby="connection-secret-error"
                 type="password"
                 required={!existing}
                 autoComplete="new-password"
                 {...form.register("secret_key")}
               />
-              <FieldDescription>
-                {existing
-                  ? "两个密钥字段留空可保留原凭证。"
-                  : "请使用仅能访问目标存储桶的专用凭证。"}
-              </FieldDescription>
+              <FieldError
+                id="connection-secret-error"
+                errors={[form.formState.errors.secret_key]}
+              />
             </Field>
           </ResponsiveDialogBody>
           <ResponsiveDialogFooter>

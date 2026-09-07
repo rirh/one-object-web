@@ -7,7 +7,6 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { MIN_PAGE_SIZE } from "@/lib/pagination"
-import { PageHeader } from "@/components/page-header"
 import { authPermissionsQuery } from "@/views/account/permissions-api"
 import { useCallback } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -59,12 +58,7 @@ export default function FilesPage() {
   )
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader
-          eyebrow="对象存储"
-          title="文件管理"
-          description="集中管理后台与应用上传的文件。"
-        />
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Button asChild>
           <Link
             to={
@@ -78,7 +72,7 @@ export default function FilesPage() {
           </Link>
         </Button>
       </div>
-      <div className="max-w-sm">
+      <div className="w-full sm:max-w-sm">
         <Select
           value={storageId || "all"}
           onValueChange={(value) =>
@@ -108,7 +102,7 @@ export default function FilesPage() {
           setParams({ search, storage: storageId, offset: "0" }),
         )}
       >
-        <Field className="max-w-sm">
+        <Field className="w-full sm:max-w-sm">
           <FieldLabel htmlFor="file-search">搜索文件</FieldLabel>
           <Input
             id="file-search"
@@ -118,6 +112,7 @@ export default function FilesPage() {
           />
         </Field>
         <Button
+          className="w-full sm:w-auto"
           variant="outline"
           type="submit"
           disabled={query.isFetching}

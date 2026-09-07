@@ -71,6 +71,7 @@ type ResourceTableProps<TData, TFilter extends string = StatusFilter> = {
   isLoading?: boolean
   isFetching?: boolean
   error?: unknown
+  onRefreshAnimationIteration?: () => void
   onRefresh: () => void
   onCreate?: () => void
   createLabel?: string
@@ -107,6 +108,7 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
   isFetching = false,
   error,
   onRefresh,
+  onRefreshAnimationIteration,
   onCreate,
   createLabel,
   emptyLabel,
@@ -288,6 +290,7 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
         isFetching={isFetching}
         onCreate={onCreate}
         onRefresh={onRefresh}
+        onRefreshAnimationIteration={onRefreshAnimationIteration}
         onSearchChange={(value) => {
           table.setPageIndex(0)
           setRowSelection({})

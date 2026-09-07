@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/page-header"
 import { Link } from "react-router"
 import { UnderlineHover } from "@/components/underline-hover"
 const example = `# 从应用服务端发起请求。OBJECT_TOKEN 放在服务端环境变量中。
@@ -18,11 +17,6 @@ curl -X POST "$OBJECT_URL/api/uploads/$UPLOAD_ID/complete" \\
 export default function IntegrationPage() {
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageHeader
-        eyebrow="对象存储"
-        title="应用接入"
-        description="其他应用调用同一套分片接口，无需直接管理存储凭证。"
-      />
       <ol className="flex list-inside list-decimal flex-col gap-3 text-sm">
         <li>
           在{" "}
