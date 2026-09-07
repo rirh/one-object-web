@@ -1,14 +1,46 @@
+import { createRequire } from "node:module"
 import tailwindcss from "@tailwindcss/vite"
 import { fileURLToPath, URL } from "node:url"
 import react from "@vitejs/plugin-react"
 import { defineConfig, loadEnv } from "vite"
 
+const require = createRequire(import.meta.url)
+const pkg = require("./package.json") as {
+  appName?: string
+  name: string
+  version: string
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_")
-  const backendUrl = env.VITE_DEV_BACKEND_URL
+  const backendUrl = env.VITE_DEV_BACKEND_URL || "http://127.0.0.1:27525"
+  const appName = env.VITE_APP_NAME || pkg.appName || pkg.name
+  const appVersion = env.VITE_APP_VERSION?.trim() || pkg.version
+  const buildTime = env.VITE_BUILD_TIME?.trim() || new Date().toISOString()
+  const buildId = `${appVersion}:${buildTime}`
 
   return {
-    plugins: [react(), tailwindcss()],
+    base: env.VITE_BASE_URL || "/",
+    define: {
+      __APP_BUILD_TIME__: JSON.stringify(buildTime),
+      __APP_VERSION__: JSON.stringify(appVersion),
+      __APP_BUILD_ID__: JSON.stringify(buildId),
+    },
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: "html-app-name",
+        generateBundle() {
+          this.emitFile({
+            type: "asset",
+            fileName: "app-version.json",
+            source: JSON.stringify({ version: appVersion, buildId }),
+          })
+        },
+        transformIndexHtml: (html) => html.replaceAll("%APP_NAME%", appName),
+      },
+    ],
     resolve: {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },
@@ -16,14 +48,12 @@ export default defineConfig(({ mode }) => {
       host: "127.0.0.1",
       port: 27526,
       strictPort: true,
-      proxy: backendUrl
-        ? {
-            "/api": { target: backendUrl, changeOrigin: true },
-            "/callback": { target: backendUrl, changeOrigin: true },
-            "/healthz": { target: backendUrl, changeOrigin: true },
-            "/readyz": { target: backendUrl, changeOrigin: true },
-          }
-        : undefined,
+      proxy: {
+        "/api": { target: backendUrl, changeOrigin: true },
+        "/callback": { target: backendUrl, changeOrigin: true },
+        "/healthz": { target: backendUrl, changeOrigin: true },
+        "/readyz": { target: backendUrl, changeOrigin: true },
+      },
     },
   }
 })

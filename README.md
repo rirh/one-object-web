@@ -10,6 +10,7 @@
 
 ```bash
 pnpm install
+pnpm lint
 pnpm build
 ```
 
@@ -18,3 +19,11 @@ pnpm build
 刷新页面后从服务端列出未完成任务，重新选择原文件继续。客户端核对已上传分片 SHA-256，防止误选同名同大小但内容不同的文件。暂停取消当前 HTTP 请求；已确认分片持久保留，支持重试。100% 表示服务端合并完成，不只是字节发送完毕。
 
 完整接入约定见 [integrations/README.md](../integrations/README.md)。发布仍由 one-action 执行，不从这里直接部署。
+
+## Web 环境配置
+
+与 One Browser 一致，dev、stage、prod 分别使用 `.env.development`、`.env.stage`、`.env.production`。`pnpm dev` 加载 development，`pnpm build:stage` 加载 stage，`pnpm build` 加载 production。
+
+开发代理默认指向 `http://127.0.0.1:27525`，可通过 `VITE_DEV_BACKEND_URL` 覆盖。`VITE_BASE_URL` 控制资源基础路径；接口保持同源。环境文件只存放公开配置。
+
+Vite 从 package.json 读取应用名称和版本，可使用 `VITE_APP_NAME`、`VITE_APP_VERSION`、`VITE_BUILD_TIME` 覆盖，并生成 `app-version.json`。`pnpm lint` 使用与 One Browser 相同的 Oxlint 规则，警告也视为失败。
