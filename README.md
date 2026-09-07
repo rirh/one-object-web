@@ -1,6 +1,6 @@
 # One Object Web
 
-参照 One User 的 React / Vite / shadcn（radix-nova）后台布局。包含文件列表、分片上传/暂停/恢复、应用密钥、存储配置状态和接入说明；所有业务数据来自真实后端接口。
+参照 One User 的 React / Vite / shadcn（radix-nova）后台布局。包含 Cloudflare R2、AWS S3、阿里云 OSS、腾讯云 COS 的多存储接入、文件列表、分片上传/暂停/恢复、应用密钥和接入说明；所有业务数据来自真实后端接口。
 
 - 原生 fetch 统一封装：`src/lib/http.ts`；页面调用置于各自 `api.ts`。
 - TanStack Query 管理服务端状态；TanStack Table 管理文件表格。
@@ -14,7 +14,7 @@ pnpm lint
 pnpm build
 ```
 
-开发时分别运行本项目 `pnpm dev` 和后端 `make dev`，浏览器访问 `http://127.0.0.1:27525`。后端在 `ENV=dev|development` 下将页面与资源代理到 Vite（27526），API、登录与回调仍由后端处理，HMR 直接连接 27526。无需构建、复制 web-dist 或修改 One User 回调。生产环境仍托管构建产物；`pnpm build` 包含 TypeScript 检查。
+开发时只需运行后端 `make dev`，会依次启动本项目 Vite 和后端，浏览器访问 `http://127.0.0.1:27525`。后端在 `ENV=dev|development` 下将页面与资源代理到 Vite（27526），API、登录与回调仍由后端处理，HMR 直接连接 27526。无需构建、复制 web-dist 或修改 One User 回调。生产环境仍托管构建产物；`pnpm build` 包含 TypeScript 检查。
 
 刷新页面后从服务端列出未完成任务，重新选择原文件继续。客户端核对已上传分片 SHA-256，防止误选同名同大小但内容不同的文件。暂停取消当前 HTTP 请求；已确认分片持久保留，支持重试。100% 表示服务端合并完成，不只是字节发送完毕。
 
@@ -40,3 +40,5 @@ Vite 从 package.json 读取应用名称和版本，可使用 `VITE_APP_NAME`、
 菜单读取后端有效权限和权限树；前端路由与操作按钮做权限检查，后端仍为授权依据。权限每 30 秒刷新，页面聚焦时也重新读取。用户和日志使用与 One User 相同的表格；每批加载 50 条，支持加载更多，再在已加载数据内筛选和分页。少于 10 条时不显示分页。
 
 `src/views/dashboard/admin/api/rbac-api.ts` 对齐 Object 的 PUT/集合响应合同；用户绑定 One User sub，不在 Object 创建密码。数据时间统一使用 date-fns，页面显示本地时区 `yyyy-MM-dd HH:mm:ss`；构建时间保留毫秒和时区，可继续用 `VITE_BUILD_TIME` 覆盖。
+
+对象存储菜单包含“厂商接入”和“文件管理”。支持同厂商多个 Bucket；文件列表可按接入筛选，上传时选择已启用的接入。配置密钥不回显，编辑时可保留或成对轮换凭证。上传分片和合并遇到临时错误最多重试三次，新建上传不会自动重试。

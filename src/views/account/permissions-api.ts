@@ -106,7 +106,6 @@ export const authPermissionsQuery = queryOptions({
       routes: [
         route("home", "仪表盘", "/dashboard"),
         ...groupDashboardRoutes(result.routes),
-        route("integration", "应用接入", "/dashboard/integration"),
       ],
     }
   },

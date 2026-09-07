@@ -1,3 +1,11 @@
+import { listConnections } from "@/views/storage/api"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
 import { MIN_PAGE_SIZE } from "@/lib/pagination"
 import { PageHeader } from "@/components/page-header"
 import { authPermissionsQuery } from "@/views/account/permissions-api"
@@ -21,12 +29,17 @@ export default function FilesPage() {
     Math.min(1_000_000, Number(params.get("offset")) || 0),
   )
   const search = params.get("search") || ""
+  const storageId = params.get("storage") || ""
+  const connections = useQuery({
+    queryKey: ["storage-connections"],
+    queryFn: ({ signal }) => listConnections(signal),
+  })
   const form = useForm({ values: { search } })
   const access = useQuery(authPermissionsQuery)
   const client = useQueryClient()
   const query = useQuery({
-    queryKey: ["files", offset, search],
-    queryFn: ({ signal }) => listFiles(offset, search, signal),
+    queryKey: ["files", offset, search, storageId],
+    queryFn: ({ signal }) => listFiles(offset, search, signal, storageId),
   })
   const remove = useMutation({
     mutationFn: deleteFile,
@@ -53,16 +66,46 @@ export default function FilesPage() {
           description="集中管理后台与应用上传的文件。"
         />
         <Button asChild>
-          <Link to="/uploads">
+          <Link
+            to={
+              storageId
+                ? `/dashboard/uploads?storage=${encodeURIComponent(storageId)}`
+                : "/dashboard/uploads"
+            }
+          >
             <UploadIcon data-icon="inline-start" />
             上传文件
           </Link>
         </Button>
       </div>
+      <div className="max-w-sm">
+        <Select
+          value={storageId || "all"}
+          onValueChange={(value) =>
+            setParams({
+              search,
+              storage: value === "all" ? "" : value,
+              offset: "0",
+            })
+          }
+        >
+          <SelectTrigger aria-label="筛选存储接入">
+            <SelectValue placeholder="全部存储" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部存储</SelectItem>
+            {connections.data?.items.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name} · {c.bucket}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={form.handleSubmit(({ search }) =>
-          setParams({ search, offset: "0" }),
+          setParams({ search, storage: storageId, offset: "0" }),
         )}
       >
         <Field className="max-w-sm">
@@ -115,7 +158,11 @@ export default function FilesPage() {
               variant="outline"
               disabled={offset === 0 || query.isFetching}
               onClick={() =>
-                setParams({ search, offset: String(Math.max(0, offset - 50)) })
+                setParams({
+                  search,
+                  storage: storageId,
+                  offset: String(Math.max(0, offset - 50)),
+                })
               }
             >
               上一页
@@ -123,7 +170,13 @@ export default function FilesPage() {
             <Button
               variant="outline"
               disabled={offset + 50 >= query.data.total || query.isFetching}
-              onClick={() => setParams({ search, offset: String(offset + 50) })}
+              onClick={() =>
+                setParams({
+                  search,
+                  storage: storageId,
+                  offset: String(offset + 50),
+                })
+              }
             >
               下一页
             </Button>

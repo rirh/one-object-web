@@ -1,4 +1,4 @@
-import { json, request } from "@/lib/http"
+import { ApiError, json, request } from "@/lib/http"
 export type Upload = {
   id: string
   original_filename: string
@@ -23,12 +23,14 @@ export async function uploadFile(
   id: string | undefined,
   signal: AbortSignal,
   progress: (id: string, percent: number) => void,
+  storageId?: string,
 ) {
   if (!file.size) throw new Error("请选择非空文件")
   const state = id
     ? await getUpload(id, signal)
     : await request<UploadState>("/api/uploads", {
         ...json({
+          storage_id: storageId,
           original_filename: file.name,
           file_size: file.size,
           mime_type: file.type || "application/octet-stream",
@@ -62,20 +64,62 @@ export async function uploadFile(
       if (hash !== previous.sha256)
         throw new Error("已上传分片与所选文件不一致，请取消任务并重新上传")
     } else {
-      await request(`/api/uploads/${upload.id}/parts/${number}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: chunk,
+      await retryUpload(
+        () =>
+          request(`/api/uploads/${upload.id}/parts/${number}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/octet-stream" },
+            body: chunk,
+            signal,
+          }),
         signal,
-      })
+      )
     }
     progress(upload.id, Math.round((number / upload.total_parts) * 99))
   }
   signal.throwIfAborted()
-  await request(`/api/uploads/${upload.id}/complete`, {
-    method: "POST",
+  await retryUpload(
+    () =>
+      request(`/api/uploads/${upload.id}/complete`, {
+        method: "POST",
+        signal,
+      }),
     signal,
-  })
+  )
   progress(upload.id, 100)
   return upload.id
+}
+
+// Only retry idempotent part/complete requests. Creation is never automatically replayed.
+async function retryUpload<T>(
+  operation: () => Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    signal.throwIfAborted()
+    try {
+      return await operation()
+    } catch (error) {
+      signal.throwIfAborted()
+      const retryable =
+        error instanceof TypeError ||
+        (error instanceof ApiError &&
+          (error.status === 408 || error.status === 429 || error.status >= 500))
+      if (!retryable || attempt >= 2) throw error
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => {
+          clearTimeout(timer)
+          reject(signal.reason)
+        }
+        const timer = setTimeout(
+          () => {
+            signal.removeEventListener("abort", abort)
+            resolve()
+          },
+          500 * 2 ** attempt + Math.random() * 250,
+        )
+        signal.addEventListener("abort", abort, { once: true })
+      })
+    }
+  }
 }

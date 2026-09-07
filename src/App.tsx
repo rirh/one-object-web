@@ -1,3 +1,4 @@
+import { RouteProgressPending } from "@/components/route-progress"
 import { lazy, Suspense } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Navigate, Outlet, Route, Routes } from "react-router"
@@ -42,7 +43,14 @@ export function App() {
     )
   if (!account.data) return <LoginPage />
   return (
-    <Suspense fallback={<Loading />}>
+    <Suspense
+      fallback={
+        <>
+          <RouteProgressPending />
+          <Loading />
+        </>
+      }
+    >
       <Routes>
         <Route path="dashboard" element={<AppShell />}>
           <Route index element={<Dashboard />} />

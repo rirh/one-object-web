@@ -49,14 +49,12 @@ describe("resumable upload", () => {
     expect(progress).toHaveBeenLastCalledWith("test", 100)
   })
   it("rejects same-name same-size files whose confirmed part differs", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(
-        Response.json({
-          upload,
-          parts: [{ part_number: 1, sha256: await sha("abc"), size: 3 }],
-        }),
-      )
+    const fetch = vi.fn().mockResolvedValueOnce(
+      Response.json({
+        upload,
+        parts: [{ part_number: 1, sha256: await sha("abc"), size: 3 }],
+      }),
+    )
     vi.stubGlobal("fetch", fetch)
     await expect(
       uploadFile(
@@ -88,4 +86,38 @@ describe("resumable upload", () => {
     ).rejects.toThrow()
     expect(fetch).toHaveBeenCalledTimes(2)
   })
+})
+
+it("retries transient part failures without recreating the upload", async () => {
+  vi.useFakeTimers()
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ upload, parts: [] }))
+    .mockResolvedValueOnce(Response.json({ message: "busy" }, { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ part: {} }))
+    .mockResolvedValueOnce(Response.json({ part: {} }))
+    .mockResolvedValueOnce(Response.json({ file_id: "test", completed: true }))
+  vi.stubGlobal("fetch", fetch)
+  try {
+    const pending = uploadFile(
+      new File(["abcdef"], "a.txt"),
+      undefined,
+      new AbortController().signal,
+      vi.fn(),
+      "connection-test",
+    )
+    await vi.runAllTimersAsync()
+    await expect(pending).resolves.toBe("test")
+    expect(
+      fetch.mock.calls.filter((c) => c[0] === "/api/uploads"),
+    ).toHaveLength(1)
+    expect(JSON.parse(fetch.mock.calls[0][1].body).storage_id).toBe(
+      "connection-test",
+    )
+    expect(
+      fetch.mock.calls.filter((c) => c[0] === "/api/uploads/test/parts/1"),
+    ).toHaveLength(2)
+  } finally {
+    vi.useRealTimers()
+  }
 })

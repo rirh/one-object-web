@@ -1,3 +1,12 @@
+import { useSearchParams } from "react-router"
+import { listConnections, PROVIDERS } from "@/views/storage/api"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
 import { PageHeader } from "@/components/page-header"
 import { useCurrentTime } from "@/hooks/use-current-time"
 import { fromUnixTime, isBefore } from "date-fns"
@@ -16,6 +25,12 @@ import { bytes, date } from "@/lib/format"
 import { abortUpload, listUploads, uploadFile } from "./api"
 import { progressAtom } from "./store"
 export default function UploadsPage() {
+  const [params] = useSearchParams()
+  const [storageId, setStorageId] = useState(params.get("storage") ?? "")
+  const connections = useQuery({
+    queryKey: ["storage-connections"],
+    queryFn: ({ signal }) => listConnections(signal),
+  })
   const now = useCurrentTime()
   const [paused, setPaused] = useState(false)
   const [progress, setProgress] = useAtom(progressAtom)
@@ -38,8 +53,12 @@ export default function UploadsPage() {
       setPaused(false)
       const current = new AbortController()
       controller.current = current
-      return uploadFile(file, id, current.signal, (id, percent) =>
-        setProgress({ id, percent }),
+      return uploadFile(
+        file,
+        id,
+        current.signal,
+        (id, percent) => setProgress({ id, percent }),
+        storageId,
       )
     },
     onSuccess: () => {
@@ -78,6 +97,24 @@ export default function UploadsPage() {
         description="支持大文件分片、暂停和失败续传。上传任务保留 24 小时。"
       />
       <Field className="max-w-xl">
+        <FieldLabel>存储接入</FieldLabel>
+        <Select value={storageId} onValueChange={setStorageId} disabled={busy}>
+          <SelectTrigger>
+            <SelectValue placeholder="选择存储桶" />
+          </SelectTrigger>
+          <SelectContent>
+            {connections.data?.items
+              .filter((c) => c.enabled)
+              .map((c) => (
+                <SelectItem value={c.id} key={c.id}>
+                  {c.name} · {PROVIDERS[c.provider]} · {c.bucket}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      {connections.error && <Failure error={connections.error} />}
+      <Field className="max-w-xl">
         <FieldLabel htmlFor="new-file">
           <UploadIcon className="size-4" />
           选择文件
@@ -85,7 +122,7 @@ export default function UploadsPage() {
         <Input
           id="new-file"
           type="file"
-          disabled={busy}
+          disabled={busy || !storageId}
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (file) upload.mutate({ file })

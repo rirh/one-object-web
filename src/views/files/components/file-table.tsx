@@ -40,6 +40,7 @@ export function FileTable({
           </span>
         ),
       },
+      { accessorKey: "bucket_name", header: "存储桶" },
       {
         accessorKey: "file_size",
         header: "大小",

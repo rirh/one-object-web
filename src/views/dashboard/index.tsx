@@ -33,7 +33,7 @@ import { bytes, date } from "@/lib/format"
 import { authPermissionsQuery } from "@/views/account/permissions-api"
 import { listFiles } from "@/views/files/api"
 import { listKeys } from "@/views/keys/api"
-import { getStorage } from "@/views/storage/api"
+import { listConnections, PROVIDERS } from "@/views/storage/api"
 import { getLiveness, getReadiness } from "./api"
 import { MetricCard } from "./components/metric-card"
 import { ServiceStatusCard } from "./components/service-status-card"
@@ -56,8 +56,8 @@ export default function Dashboard() {
     enabled: canKeys,
   })
   const storage = useQuery({
-    queryKey: ["storage"],
-    queryFn: ({ signal }) => getStorage(signal),
+    queryKey: ["storage-connections"],
+    queryFn: ({ signal }) => listConnections(signal),
     enabled: canStorage,
   })
   const liveness = useQuery({
@@ -111,28 +111,24 @@ export default function Dashboard() {
           detail={canKeys ? "当前账户的全部应用密钥" : "暂无密钥查看权限"}
         />
         <MetricCard
-          label="存储配置"
+          label="已接入存储"
           icon={DatabaseIcon}
           value={metric(
             canStorage,
             storage.isPending,
-            storage.data
-              ? storage.data.configured
-                ? "已配置"
-                : "待配置"
-              : undefined,
+            storage.data?.items.length,
           )}
-          detail={canStorage ? "S3 兼容存储 · 连接未检测" : "暂无存储查看权限"}
+          detail={canStorage ? "当前账户的厂商接入配置" : "暂无存储查看权限"}
         />
         <MetricCard
-          label="单文件上限"
+          label="启用存储"
           icon={HardDriveIcon}
           value={metric(
             canStorage,
             storage.isPending,
-            storage.data ? bytes(storage.data.max_file_size) : undefined,
+            storage.data?.items.filter((c) => c.enabled).length,
           )}
-          detail="分片上传支持的最大文件大小"
+          detail="可用于新建上传的存储桶"
         />
       </div>
       <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(20rem,1fr)]">
@@ -218,24 +214,34 @@ export default function Dashboard() {
                 retry={() => void storage.refetch()}
               />
             ) : (
-              <dl className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-5 gap-y-5 text-sm">
-                <dt className="text-muted-foreground">配置状态</dt>
-                <dd>
-                  <Badge variant="secondary">
-                    {storage.data.configured
-                      ? "已配置（连接未检测）"
-                      : "待配置"}
-                  </Badge>
-                </dd>
-                <dt className="text-muted-foreground">Bucket</dt>
-                <dd className="break-all">{storage.data.bucket || "—"}</dd>
-                <dt className="text-muted-foreground">Region</dt>
-                <dd className="break-all">{storage.data.region || "—"}</dd>
-                <dt className="text-muted-foreground">分片大小</dt>
-                <dd>{bytes(storage.data.part_size)}</dd>
-                <dt className="text-muted-foreground">下载方式</dt>
-                <dd>鉴权后生成临时下载地址</dd>
-              </dl>
+              <div className="grid gap-4">
+                {storage.data.items.length ? (
+                  storage.data.items.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{c.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {PROVIDERS[c.provider]} · {c.bucket}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">
+                        {c.enabled ? "启用" : "停用"}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <NoItems
+                    title="尚未接入存储"
+                    description="在厂商接入中新增存储桶。"
+                  />
+                )}
+                <Button asChild variant="outline">
+                  <Link to="/dashboard/storage">管理厂商接入</Link>
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

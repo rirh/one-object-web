@@ -1,3 +1,4 @@
+import { RouteProgress } from "@/components/route-progress"
 import { BuildInfo } from "@/components/build-info"
 import { LanguageProvider } from "@/components/providers/language"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <TooltipProvider>
               <BuildInfo />
               <BrowserRouter>
+                <RouteProgress />
                 <App />
               </BrowserRouter>
               <Toaster richColors />

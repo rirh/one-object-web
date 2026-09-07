@@ -1,0 +1,22 @@
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: var(--primary);
+  height: 2px;
+  z-index: 10000;
+}
+
+#nprogress .peg {
+  box-shadow:
+    0 0 10px var(--primary),
+    0 0 5px var(--primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #nprogress .bar,
+  #nprogress .peg {
+    transition: none !important;
+  }
+}
