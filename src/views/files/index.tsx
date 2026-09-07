@@ -1,3 +1,6 @@
+import { MIN_PAGE_SIZE } from "@/lib/pagination"
+import { PageHeader } from "@/components/page-header"
+import { authPermissionsQuery } from "@/views/account/permissions-api"
 import { useCallback } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useSearchParams } from "react-router"
@@ -19,6 +22,7 @@ export default function FilesPage() {
   )
   const search = params.get("search") || ""
   const form = useForm({ values: { search } })
+  const access = useQuery(authPermissionsQuery)
   const client = useQueryClient()
   const query = useQuery({
     queryKey: ["files", offset, search],
@@ -32,22 +36,22 @@ export default function FilesPage() {
     },
     onError: (error) => toast.error(error.message),
   })
+  const removeFile = remove.mutate
   const onDelete = useCallback(
     (file: ObjectFile) => {
       if (window.confirm(`删除“${file.original_filename}”？此操作无法撤销。`))
-        remove.mutate(file.id)
+        removeFile(file.id)
     },
-    [remove.mutate],
+    [removeFile],
   )
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">文件管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            集中管理后台与应用上传的文件。
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="对象存储"
+          title="文件管理"
+          description="集中管理后台与应用上传的文件。"
+        />
         <Button asChild>
           <Link to="/uploads">
             <UploadIcon data-icon="inline-start" />
@@ -86,7 +90,11 @@ export default function FilesPage() {
       ) : query.data.items.length ? (
         <FileTable
           data={query.data.items}
-          onDelete={onDelete}
+          onDelete={
+            access.data?.permissions.includes("object:files:delete")
+              ? onDelete
+              : undefined
+          }
           pending={remove.isPending}
         />
       ) : (
@@ -97,7 +105,7 @@ export default function FilesPage() {
           <SweepShine>正在删除文件…</SweepShine>
         </p>
       ) : null}
-      {query.data ? (
+      {query.data && query.data.total >= MIN_PAGE_SIZE ? (
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <span className="text-muted-foreground">
             共 {query.data.total} 个文件

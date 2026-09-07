@@ -1,3 +1,6 @@
+import { BuildInfo } from "@/components/build-info"
+import { LanguageProvider } from "@/components/providers/language"
+import { ThemeProvider } from "@/components/theme-provider"
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -14,12 +17,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Provider>
       <QueryClientProvider client={client}>
-        <TooltipProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-          <Toaster richColors />
-        </TooltipProvider>
+        <LanguageProvider>
+          <ThemeProvider storageKey="one-object:theme">
+            <TooltipProvider>
+              <BuildInfo />
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+              <Toaster richColors />
+            </TooltipProvider>
+          </ThemeProvider>
+        </LanguageProvider>
       </QueryClientProvider>
     </Provider>
   </React.StrictMode>,

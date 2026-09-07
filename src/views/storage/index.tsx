@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header"
 import { useQuery } from "@tanstack/react-query"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Loading, Failure } from "@/components/async-state"
@@ -11,12 +12,11 @@ export default function StoragePage() {
   })
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">存储配置</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          所有应用通过 One Object 写入统一的 S3 兼容存储。
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="对象存储"
+        title="存储配置"
+        description="所有应用通过 One Object 写入统一的 S3 兼容存储。"
+      />
       {query.isPending ? (
         <Loading />
       ) : query.error ? (

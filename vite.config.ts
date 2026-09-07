@@ -1,3 +1,4 @@
+import { format } from "date-fns"
 import { createRequire } from "node:module"
 import tailwindcss from "@tailwindcss/vite"
 import { fileURLToPath, URL } from "node:url"
@@ -16,7 +17,9 @@ export default defineConfig(({ mode }) => {
   const backendUrl = env.VITE_DEV_BACKEND_URL || "http://127.0.0.1:27525"
   const appName = env.VITE_APP_NAME || pkg.appName || pkg.name
   const appVersion = env.VITE_APP_VERSION?.trim() || pkg.version
-  const buildTime = env.VITE_BUILD_TIME?.trim() || new Date().toISOString()
+  const buildTime =
+    env.VITE_BUILD_TIME?.trim() ||
+    format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
   const buildId = `${appVersion}:${buildTime}`
 
   return {
@@ -48,6 +51,7 @@ export default defineConfig(({ mode }) => {
       host: "127.0.0.1",
       port: 27526,
       strictPort: true,
+      hmr: { host: "127.0.0.1", clientPort: 27526 },
       proxy: {
         "/api": { target: backendUrl, changeOrigin: true },
         "/callback": { target: backendUrl, changeOrigin: true },

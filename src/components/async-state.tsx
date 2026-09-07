@@ -6,14 +6,10 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
-import { SweepShine } from "@/components/sweep-shine"
+import { LoadingState } from "@/components/loading-state"
 import { ApiError } from "@/lib/http"
 export function Loading() {
-  return (
-    <p role="status" className="py-10 text-sm text-muted-foreground">
-      <SweepShine>正在加载…</SweepShine>
-    </p>
-  )
+  return <LoadingState>正在加载…</LoadingState>
 }
 export function Failure({
   error,

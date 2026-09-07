@@ -1,3 +1,7 @@
+import { PageHeader } from "@/components/page-header"
+import { useCurrentTime } from "@/hooks/use-current-time"
+import { fromUnixTime, isBefore } from "date-fns"
+import { authPermissionsQuery } from "@/views/account/permissions-api"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -32,13 +36,18 @@ const schema = z.object({
 })
 type Form = z.infer<typeof schema>
 export default function KeysPage() {
+  const now = useCurrentTime()
+  const access = useQuery(authPermissionsQuery)
+  const permissions = access.data?.permissions || []
   const client = useQueryClient()
   const form = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
       expires_in_days: 90,
-      scopes: ["uploads:write", "files:read"],
+      scopes: ["uploads:write", "files:read"].filter((scope) =>
+        permissions.includes(`object:${scope}`),
+      ),
     },
   })
   const query = useQuery({
@@ -68,78 +77,83 @@ export default function KeysPage() {
   })
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">应用密钥</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          每个密钥使用独立的应用空间，只能访问自己上传的文件。
-        </p>
-      </div>
-      <form
-        className="max-w-xl"
-        onSubmit={form.handleSubmit((input) => create.mutate(input))}
-      >
-        <FieldGroup>
-          <Field data-invalid={!!form.formState.errors.name}>
-            <FieldLabel htmlFor="app-name">应用名称</FieldLabel>
-            <Input
-              id="app-name"
-              placeholder="例如 One Mail"
-              aria-invalid={!!form.formState.errors.name}
-              {...form.register("name")}
-            />
-            <FieldError>{form.formState.errors.name?.message}</FieldError>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="key-days">有效天数</FieldLabel>
-            <Input
-              id="key-days"
-              type="number"
-              min={1}
-              max={365}
-              {...form.register("expires_in_days", { valueAsNumber: true })}
-            />
-            <FieldError>
-              {form.formState.errors.expires_in_days?.message}
-            </FieldError>
-          </Field>
-          <FieldSet>
-            <FieldLegend>权限</FieldLegend>
-            <div className="flex flex-wrap gap-4">
-              {scopes.map(([value, label]) => (
-                <Field key={value} orientation="horizontal">
-                  <Controller
-                    control={form.control}
-                    name="scopes"
-                    render={({ field }) => (
-                      <Checkbox
-                        id={value}
-                        checked={field.value.includes(value)}
-                        onCheckedChange={(checked) =>
-                          field.onChange(
-                            checked
-                              ? [...field.value, value]
-                              : field.value.filter((scope) => scope !== value),
-                          )
-                        }
+      <PageHeader
+        eyebrow="对象存储"
+        title="应用密钥"
+        description="每个密钥使用独立的应用空间，只能访问自己上传的文件。"
+      />
+      {permissions.includes("object:keys:create") && (
+        <form
+          className="max-w-xl"
+          onSubmit={form.handleSubmit((input) => create.mutate(input))}
+        >
+          <FieldGroup>
+            <Field data-invalid={!!form.formState.errors.name}>
+              <FieldLabel htmlFor="app-name">应用名称</FieldLabel>
+              <Input
+                id="app-name"
+                placeholder="例如 One Mail"
+                aria-invalid={!!form.formState.errors.name}
+                {...form.register("name")}
+              />
+              <FieldError>{form.formState.errors.name?.message}</FieldError>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="key-days">有效天数</FieldLabel>
+              <Input
+                id="key-days"
+                type="number"
+                min={1}
+                max={365}
+                {...form.register("expires_in_days", { valueAsNumber: true })}
+              />
+              <FieldError>
+                {form.formState.errors.expires_in_days?.message}
+              </FieldError>
+            </Field>
+            <FieldSet>
+              <FieldLegend>权限</FieldLegend>
+              <div className="flex flex-wrap gap-4">
+                {scopes
+                  .filter(([value]) => permissions.includes(`object:${value}`))
+                  .map(([value, label]) => (
+                    <Field key={value} orientation="horizontal">
+                      <Controller
+                        control={form.control}
+                        name="scopes"
+                        render={({ field }) => (
+                          <Checkbox
+                            id={value}
+                            checked={field.value.includes(value)}
+                            onCheckedChange={(checked) =>
+                              field.onChange(
+                                checked
+                                  ? [...field.value, value]
+                                  : field.value.filter(
+                                      (scope) => scope !== value,
+                                    ),
+                              )
+                            }
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  <FieldLabel htmlFor={value}>{label}</FieldLabel>
-                </Field>
-              ))}
-            </div>
-            <FieldError>{form.formState.errors.scopes?.message}</FieldError>
-          </FieldSet>
-          <Button
-            className="self-start"
-            type="submit"
-            disabled={create.isPending || !!create.data}
-            aria-busy={create.isPending}
-          >
-            <SweepShine active={create.isPending}>创建密钥</SweepShine>
-          </Button>
-        </FieldGroup>
-      </form>
+                      <FieldLabel htmlFor={value}>{label}</FieldLabel>
+                    </Field>
+                  ))}
+              </div>
+              <FieldError>{form.formState.errors.scopes?.message}</FieldError>
+            </FieldSet>
+            <Button
+              className="self-start"
+              type="submit"
+              disabled={create.isPending || !!create.data}
+              aria-busy={create.isPending}
+            >
+              <SweepShine active={create.isPending}>创建密钥</SweepShine>
+            </Button>
+          </FieldGroup>
+        </form>
+      )}
       {create.error ? <Failure error={create.error} /> : null}
       {create.data ? (
         <Alert>
@@ -186,7 +200,7 @@ export default function KeysPage() {
                   <Badge variant="secondary">
                     {key.revoked
                       ? "已撤销"
-                      : key.expires_at * 1000 <= Date.now()
+                      : isBefore(fromUnixTime(key.expires_at), now)
                         ? "已过期"
                         : "有效"}
                   </Badge>
@@ -200,7 +214,11 @@ export default function KeysPage() {
               </div>
               <Button
                 variant="outline"
-                disabled={key.revoked || revoke.isPending}
+                disabled={
+                  key.revoked ||
+                  revoke.isPending ||
+                  !permissions.includes("object:keys:revoke")
+                }
                 aria-busy={revoke.isPending && revoke.variables === key.id}
                 onClick={() => {
                   if (

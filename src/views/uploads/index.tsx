@@ -1,4 +1,7 @@
-import { useEffect, useRef } from "react"
+import { PageHeader } from "@/components/page-header"
+import { useCurrentTime } from "@/hooks/use-current-time"
+import { fromUnixTime, isBefore } from "date-fns"
+import { useEffect, useRef, useState } from "react"
 import { useAtom } from "jotai"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { PauseIcon, UploadIcon } from "lucide-react"
@@ -13,6 +16,8 @@ import { bytes, date } from "@/lib/format"
 import { abortUpload, listUploads, uploadFile } from "./api"
 import { progressAtom } from "./store"
 export default function UploadsPage() {
+  const now = useCurrentTime()
+  const [paused, setPaused] = useState(false)
   const [progress, setProgress] = useAtom(progressAtom)
   const controller = useRef<AbortController | null>(null)
   const client = useQueryClient()
@@ -30,6 +35,7 @@ export default function UploadsPage() {
   const upload = useMutation({
     mutationFn: async ({ file, id }: { file: File; id?: string }) => {
       setProgress(null)
+      setPaused(false)
       const current = new AbortController()
       controller.current = current
       return uploadFile(file, id, current.signal, (id, percent) =>
@@ -41,9 +47,10 @@ export default function UploadsPage() {
       void client.invalidateQueries({ queryKey: ["files"] })
     },
     onError: (error) => {
-      if (controller.current?.signal.aborted)
+      if (controller.current?.signal.aborted) {
+        setPaused(true)
         toast.info("上传已暂停，可重新选择原文件继续")
-      else toast.error(error.message)
+      } else toast.error(error.message)
     },
     onSettled: () => {
       void client.invalidateQueries({ queryKey: ["uploads"] })
@@ -65,12 +72,11 @@ export default function UploadsPage() {
   const busy = upload.isPending || abort.isPending
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">上传文件</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          支持大文件分片、暂停和失败续传。上传任务保留 24 小时。
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="对象存储"
+        title="上传文件"
+        description="支持大文件分片、暂停和失败续传。上传任务保留 24 小时。"
+      />
       <Field className="max-w-xl">
         <FieldLabel htmlFor="new-file">
           <UploadIcon className="size-4" />
@@ -124,9 +130,7 @@ export default function UploadsPage() {
           ) : null}
         </div>
       ) : null}
-      {upload.error && !controller.current?.signal.aborted ? (
-        <Failure error={upload.error} />
-      ) : null}
+      {upload.error && !paused ? <Failure error={upload.error} /> : null}
       <div className="flex items-center justify-between">
         <h2 className="text-base font-medium">未完成的上传</h2>
         <Button
@@ -169,7 +173,9 @@ export default function UploadsPage() {
                   <Input
                     id={`resume-${item.id}`}
                     type="file"
-                    disabled={busy || item.expires_at * 1000 <= Date.now()}
+                    disabled={
+                      busy || isBefore(fromUnixTime(item.expires_at), now)
+                    }
                     onChange={(event) => {
                       const file = event.target.files?.[0]
                       if (file) upload.mutate({ file, id: item.id })

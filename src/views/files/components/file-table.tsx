@@ -23,7 +23,7 @@ export function FileTable({
   pending,
 }: {
   data: ObjectFile[]
-  onDelete: (file: ObjectFile) => void
+  onDelete?: (file: ObjectFile) => void
   pending: boolean
 }) {
   const columns = useMemo<ColumnDef<ObjectFile>[]>(
@@ -76,21 +76,24 @@ export function FileTable({
                 <DownloadIcon />
               </a>
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={pending}
-              aria-label={`删除 ${row.original.original_filename}`}
-              onClick={() => onDelete(row.original)}
-            >
-              <Trash2Icon />
-            </Button>
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={pending}
+                aria-label={`删除 ${row.original.original_filename}`}
+                onClick={() => onDelete(row.original)}
+              >
+                <Trash2Icon />
+              </Button>
+            )}
           </div>
         ),
       },
     ],
     [onDelete, pending],
   )
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table exposes stateful helpers by design.
   const table = useReactTable({
     data,
     columns,
