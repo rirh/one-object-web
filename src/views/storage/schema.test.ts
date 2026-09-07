@@ -60,3 +60,16 @@ it("requires OCI namespace and region for account creation", () => {
   ).toBe(false)
   expect(schema.safeParse({ ...oci, region: "" }).success).toBe(false)
 })
+
+it("does not bind a vendor account to a required bucket region", () => {
+  for (const provider of ["aws", "aliyun", "tencent"]) {
+    expect(
+      connectionSchema(false, true).safeParse({
+        ...input,
+        provider,
+        region: "",
+        bucket: "",
+      }).success,
+    ).toBe(true)
+  }
+})

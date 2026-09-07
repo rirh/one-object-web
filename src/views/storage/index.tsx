@@ -173,7 +173,7 @@ export default function StoragePage() {
       accessorKey: "bucket_count",
       header: "桶数量",
       cell: ({ row: { original: account } }) => (
-        <span className="tabular-nums" title="最近同步到本地的存储桶数量">
+        <span className="tabular-nums" title="已导入或同步的存储桶数量">
           {account.bucket_count == null ||
           (!account.synced_at && account.bucket_count === 0)
             ? "未同步"
