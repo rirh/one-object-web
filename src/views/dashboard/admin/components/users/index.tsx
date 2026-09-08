@@ -25,13 +25,13 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogClose,
 } from "@/components/ui/responsive-dialog"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { useTranslation } from "@/components/providers/language-context"
+import { useCurrentTime } from "@/hooks/use-current-time"
+import { relativeTime } from "@/lib/format"
+import { UserRowActions } from "./row-actions"
+import { updateUser } from "./api"
+import { useLocalAtom } from "@/hooks/use-local-atom"
 import { rootRequest } from "@/lib/request"
 import { ResourceTable } from "../shared/resource-table"
 import { AdminErrorAlert } from "../shared/common"
@@ -49,14 +49,28 @@ type User = {
   created_at: string
 }
 type UserPage = { items: User[]; total: number; limit: number }
-type Editor = { kind: "create" | "edit" | "roles" | "delete"; user?: User }
+type Editor = {
+  kind: "create" | "edit" | "roles" | "delete" | "disable"
+  user?: User
+}
 export function UsersPanel({ permissions }: { permissions: string[] }) {
   const tx = useObjectTranslation()
 
+  const { locale } = useTranslation()
+  const now = useCurrentTime()
   const client = useQueryClient()
+  const enableMutation = useMutation({
+    mutationFn: (user: User) => updateUser(user, "active"),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["object-admin", "users"] }),
+        client.invalidateQueries({ queryKey: authPermissionsQuery.queryKey }),
+      ])
+    },
+  })
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<"all" | User["status"]>("all")
-  const [editor, setEditor] = useState<Editor | null>(null)
+  const [editor, setEditor] = useLocalAtom<Editor | null>(null)
   const users = useInfiniteQuery({
     queryKey: ["object-admin", "users"],
     initialPageParam: 0,
@@ -96,7 +110,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         header: tx("用户"),
         cell: ({ row }) => (
           <div className="flex min-w-0 items-center gap-3">
-            <Avatar className="size-9 shrink-0">
+            <Avatar className="size-7 shrink-0">
               <AvatarImage
                 src={row.original.avatar_url || undefined}
                 alt={row.original.display_name}
@@ -106,26 +120,35 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <div className="max-w-64 truncate font-medium">
+              <button
+                type="button"
+                className="max-w-64 truncate text-left font-medium underline-offset-4 enabled:hover:underline"
+                disabled={
+                  !permissions.includes("object:user:update") ||
+                  row.original.status === "deleted" ||
+                  enableMutation.isPending
+                }
+                onClick={() => setEditor({ kind: "edit", user: row.original })}
+              >
                 {row.original.display_name &&
                 row.original.display_name !== row.original.oidc_sub
                   ? row.original.display_name
-                  : row.original.email ||
-                    `${tx("用户")} #${row.original.oidc_sub}`}
-              </div>
-              <div
-                className="max-w-72 truncate text-xs text-muted-foreground"
-                title={[row.original.email, `ID: ${row.original.oidc_sub}`]
-                  .filter(Boolean)
-                  .join(" · ")}
-              >
-                {row.original.email &&
-                  row.original.display_name !== row.original.oidc_sub &&
-                  `${row.original.email} · `}
-                ID: {row.original.oidc_sub}
-              </div>
+                  : row.original.email || tx("用户")}
+              </button>
             </div>
           </div>
+        ),
+      },
+      {
+        accessorKey: "email",
+        header: tx("邮箱"),
+        cell: ({ row }) => (
+          <span
+            className="block max-w-64 truncate text-muted-foreground"
+            title={row.original.email ?? undefined}
+          >
+            {row.original.email || "—"}
+          </span>
         ),
       },
       {
@@ -133,15 +156,20 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         header: tx("角色"),
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="flex max-w-72 flex-wrap gap-1">
+          <div
+            className="flex max-w-72 items-center gap-1 overflow-hidden"
+            title={row.original.role_ids
+              .map((id) => roleNames.get(id) || tx("未知角色"))
+              .join("、")}
+          >
             {row.original.role_ids.length ? (
               row.original.role_ids.map((id) => (
-                <Badge key={id} variant="outline" className="max-w-full">
+                <Badge key={id} variant="outline" className="min-w-0 shrink">
                   <span
                     className="truncate"
-                    title={roleNames.get(id) || `#${id}`}
+                    title={roleNames.get(id) || tx("未知角色")}
                   >
-                    {roleNames.get(id) || `#${id}`}
+                    {roleNames.get(id) || tx("未知角色")}
                   </span>
                 </Badge>
               ))
@@ -156,27 +184,67 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
       {
         accessorKey: "status",
         header: tx("状态"),
-        cell: ({ getValue }) => (
-          <Badge variant={getValue() === "active" ? "secondary" : "outline"}>
-            {getValue() === "active"
-              ? tx("启用")
-              : getValue() === "disabled"
-                ? tx("停用")
-                : tx("已删除")}
-          </Badge>
-        ),
+        cell: ({ row }) =>
+          row.original.status === "deleted" ? (
+            <Badge variant="outline">{tx("已删除")}</Badge>
+          ) : (
+            <Switch
+              className="motion-safe:aria-busy:animate-pulse"
+              size="sm"
+              checked={row.original.status === "active"}
+              aria-label={tx("{0} 启用状态", {
+                0:
+                  row.original.display_name || row.original.email || tx("用户"),
+              })}
+              aria-busy={
+                enableMutation.isPending &&
+                enableMutation.variables?.user_id === row.original.user_id
+              }
+              disabled={
+                !permissions.includes("object:user:update") ||
+                enableMutation.isPending ||
+                editor !== null
+              }
+              onCheckedChange={(enabled) => {
+                enableMutation.reset()
+                if (enabled) enableMutation.mutate(row.original)
+                else setEditor({ kind: "disable", user: row.original })
+              }}
+            />
+          ),
       },
       {
         accessorKey: "created_at",
         header: tx("创建时间"),
-        cell: ({ getValue }) => formatAdminTime(getValue<string>()),
+        cell: ({ getValue }) => (
+          <time
+            className="whitespace-nowrap text-muted-foreground"
+            dateTime={getValue<string>()}
+            title={formatAdminTime(getValue<string>())}
+          >
+            {relativeTime(getValue<string>(), now, locale)}
+          </time>
+        ),
       },
     ],
-    [tx, roleNames],
+    [
+      tx,
+      roleNames,
+      permissions,
+      enableMutation,
+      editor,
+      setEditor,
+      now,
+      locale,
+    ],
   )
   return (
     <>
+      {enableMutation.error ? (
+        <AdminErrorAlert error={enableMutation.error} />
+      ) : null}
       <ResourceTable
+        stickyActions
         data={data}
         columns={columns}
         searchValue={search}
@@ -204,36 +272,14 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         getRowId={(u) => u.user_id}
         renderRowActions={(user) =>
           user.status !== "deleted" && (
-            <div className="flex gap-1">
-              {permissions.includes("object:user:update") && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditor({ kind: "edit", user })}
-                >
-                  {tx("编辑")}
-                </Button>
-              )}
-              {permissions.includes("object:user:assign") &&
-                permissions.includes("object:role:list") && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditor({ kind: "roles", user })}
-                  >
-                    {tx("角色")}
-                  </Button>
-                )}
-              {permissions.includes("object:user:delete") && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditor({ kind: "delete", user })}
-                >
-                  {tx("删除")}
-                </Button>
-              )}
-            </div>
+            <UserRowActions
+              name={user.display_name || user.email || tx("用户")}
+              permissions={permissions}
+              disabled={enableMutation.isPending}
+              onEdit={() => setEditor({ kind: "edit", user })}
+              onRoles={() => setEditor({ kind: "roles", user })}
+              onDelete={() => setEditor({ kind: "delete", user })}
+            />
           )
         }
       />
@@ -280,7 +326,10 @@ function UserDialog({
 
   const [name, setName] = useState(editor.user?.display_name || "")
   const [sub, setSub] = useState("")
-  const [status, setStatus] = useState(editor.user?.status || "active")
+  const status =
+    editor.kind === "disable" || editor.user?.status === "disabled"
+      ? "disabled"
+      : "active"
   const [selected, setSelected] = useState(editor.user?.role_ids || [])
   const roles = useQuery({
     queryKey: rbacQueryKeys.roles,
@@ -296,12 +345,14 @@ function UserDialog({
         })
       if (editor.kind === "roles")
         return assignUserRoles(editor.user!.user_id, selected)
-      return rootRequest(`/api/admin/users/${editor.user!.user_id}`, {
-        method: editor.kind === "delete" ? "DELETE" : "PUT",
-        ...(editor.kind === "edit"
-          ? { body: JSON.stringify({ display_name: name, status }) }
-          : {}),
-      })
+      if (editor.kind === "delete")
+        return rootRequest(`/api/admin/users/${editor.user!.user_id}`, {
+          method: "DELETE",
+        })
+      return updateUser(
+        { user_id: editor.user!.user_id, display_name: name },
+        status,
+      )
     },
     onSuccess: saved,
   })
@@ -310,6 +361,7 @@ function UserDialog({
     edit: tx("编辑用户"),
     roles: tx("分配角色"),
     delete: tx("删除用户"),
+    disable: tx("停用用户"),
   }[editor.kind]
   function submit(e: FormEvent) {
     e.preventDefault()
@@ -330,8 +382,23 @@ function UserDialog({
               {editor.kind === "create"
                 ? tx("绑定已有 One User 账号，创建后再分配角色。")
                 : editor.kind === "delete"
-                  ? tx("删除后禁止访问，已上传文件和操作记录保留。")
-                  : editor.user?.display_name}
+                  ? tx(
+                      "确定删除用户“{0}”吗？删除后禁止访问，已上传文件和操作记录保留。",
+                      {
+                        0:
+                          editor.user?.display_name ||
+                          editor.user?.email ||
+                          tx("用户"),
+                      },
+                    )
+                  : editor.kind === "disable"
+                    ? tx("确定停用用户“{0}”吗？停用后将禁止访问。", {
+                        0:
+                          editor.user?.display_name ||
+                          editor.user?.email ||
+                          tx("用户"),
+                      })
+                    : editor.user?.display_name}
             </ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
           <ResponsiveDialogBody className="space-y-4">
@@ -360,25 +427,6 @@ function UserDialog({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
-              </Field>
-            )}
-            {editor.kind === "edit" && (
-              <Field>
-                <FieldLabel>{tx("状态")}</FieldLabel>
-                <Select
-                  value={status}
-                  onValueChange={(value) =>
-                    setStatus(value as "active" | "disabled")
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">{tx("启用")}</SelectItem>
-                    <SelectItem value="disabled">{tx("停用")}</SelectItem>
-                  </SelectContent>
-                </Select>
               </Field>
             )}
             {editor.kind === "roles" && (
@@ -426,9 +474,18 @@ function UserDialog({
                 mutation.isPending ||
                 (editor.kind === "roles" && (roles.isPending || roles.isError))
               }
-              variant={editor.kind === "delete" ? "destructive" : "default"}
+              loading={mutation.isPending}
+              variant={
+                editor.kind === "delete" || editor.kind === "disable"
+                  ? "destructive"
+                  : "default"
+              }
             >
-              {mutation.isPending ? tx("保存中…") : tx("确认")}
+              {editor.kind === "delete"
+                ? tx("确认删除")
+                : editor.kind === "disable"
+                  ? tx("确认停用")
+                  : tx("确认")}
             </DialogActionButton>
           </ResponsiveDialogFooter>
         </form>

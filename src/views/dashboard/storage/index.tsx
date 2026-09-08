@@ -1,5 +1,4 @@
 import { DialogActionButton } from "@/components/ui/dialog-action-button"
-import { UnderlineHover } from "@/components/underline-hover"
 import { useLocalAtom } from "@/hooks/use-local-atom"
 import { ConnectionEditor } from "./components/connection-editor"
 import { useObjectTranslation } from "@/local/object"
@@ -151,19 +150,17 @@ export default function StoragePage() {
             className="size-5 shrink-0 object-contain"
           />
           {canWrite ? (
-            <UnderlineHover asChild>
-              <button
-                type="button"
-                className="min-w-0 truncate text-left font-medium"
-                title={account.name}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setEditor(account)
-                }}
-              >
-                {account.name}
-              </button>
-            </UnderlineHover>
+            <button
+              type="button"
+              className="min-w-0 truncate text-left font-medium underline-offset-4 hover:underline"
+              title={account.name}
+              onClick={(event) => {
+                event.stopPropagation()
+                setEditor(account)
+              }}
+            >
+              {account.name}
+            </button>
           ) : (
             <span className="truncate font-medium" title={account.name}>
               {account.name}

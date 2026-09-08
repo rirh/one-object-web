@@ -124,7 +124,18 @@ export function RolesPanel({
         header: locale === "zh-CN" ? "角色名称" : "Role",
         cell: ({ row }) => (
           <div className="min-w-0">
-            <span className="font-medium">{row.original.role_name}</span>
+            {canUpdate && !isSuperAdminRole(row.original) ? (
+              <button
+                type="button"
+                className="max-w-72 truncate text-left font-medium underline-offset-4 hover:underline"
+                title={row.original.role_name}
+                onClick={() => setEditor({ kind: "edit", role: row.original })}
+              >
+                {row.original.role_name}
+              </button>
+            ) : (
+              <span className="font-medium">{row.original.role_name}</span>
+            )}
             {row.original.description ? (
               <p className="max-w-72 truncate text-xs text-muted-foreground">
                 {row.original.description}

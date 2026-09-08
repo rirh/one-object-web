@@ -202,7 +202,25 @@ export function PermissionsPanel({
             <Badge variant="outline">
               {permissionTypeLabel(row.original.permission_type, locale)}
             </Badge>
-            <span className="font-medium">{row.original.permission_name}</span>
+            {canUpdate ? (
+              <button
+                type="button"
+                className="max-w-72 truncate text-left font-medium underline-offset-4 hover:underline"
+                title={row.original.permission_name}
+                onClick={() =>
+                  setPermissionEditor({
+                    kind: "edit",
+                    permission: row.original,
+                  })
+                }
+              >
+                {row.original.permission_name}
+              </button>
+            ) : (
+              <span className="font-medium">
+                {row.original.permission_name}
+              </span>
+            )}
           </div>
         ),
         meta: { label: locale === "zh-CN" ? "权限名称" : "Permission" },
@@ -262,7 +280,7 @@ export function PermissionsPanel({
         meta: { label: locale === "zh-CN" ? "状态" : "Status" },
       },
     ],
-    [canChangeStatus, locale, statusMutation],
+    [canChangeStatus, canUpdate, locale, statusMutation],
   )
 
   return (

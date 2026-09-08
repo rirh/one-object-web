@@ -138,6 +138,12 @@ export const core = {
   分配角色: "Assign roles",
   未分配角色: "No roles assigned",
   删除用户: "Delete user",
+  停用用户: "Disable user",
+  未知角色: "Unknown role",
+  "确定删除用户“{0}”吗？删除后禁止访问，已上传文件和操作记录保留。":
+    "Delete user “{0}”? Access will be blocked; uploaded files and activity records will be retained.",
+  "确定停用用户“{0}”吗？停用后将禁止访问。":
+    "Disable user “{0}”? Access will be blocked.",
   "绑定已有 One User 账号，创建后再分配角色。":
     "Link an existing One User account, then assign roles after creation.",
   显示名称: "Display name",
