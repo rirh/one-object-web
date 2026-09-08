@@ -23,10 +23,14 @@ const SortableRowContext = React.createContext<SortableControls | null>(null)
 export function SortableResourceTableRow<TData>({
   row,
   disabled,
+  onClick,
+  className,
   children,
 }: {
   row: Row<TData>
   disabled: boolean
+  onClick?: () => void
+  className?: string
   children: React.ReactNode
 }) {
   const {
@@ -51,8 +55,13 @@ export function SortableResourceTableRow<TData>({
           transition,
           zIndex: isDragging ? 1 : undefined,
         }}
+        onClick={onClick}
         data-state={row.getIsSelected() ? "selected" : undefined}
-        className={cn(isDragging && "relative bg-muted/80 shadow-sm")}
+        className={cn(
+          className,
+          onClick && "cursor-pointer",
+          isDragging && "relative bg-muted/80 shadow-sm",
+        )}
       >
         {children}
       </TableRow>

@@ -18,7 +18,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog"
-import { authPermissionsQuery } from "@/views/account/permissions-api"
+import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
 import {
   assignRolePermissions,
   rbacQueryKeys,

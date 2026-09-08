@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check:structure": "python3 scripts/check-source-size.py",
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
     "test": "vitest run",

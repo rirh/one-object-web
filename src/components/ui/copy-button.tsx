@@ -1,3 +1,4 @@
+import { useObjectTranslation } from "@/local/object"
 import { useEffect, useRef, useState } from "react"
 import { CheckIcon, CopyIcon } from "lucide-react"
 import { toast } from "sonner"
@@ -21,6 +22,8 @@ function CopyButton({
   resetDelay = 2000,
   ...props
 }: CopyButtonProps) {
+  const tx = useObjectTranslation()
+
   const [copied, setCopied] = useState(false)
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -28,18 +31,18 @@ function CopyButton({
     () => () => {
       if (resetTimer.current) clearTimeout(resetTimer.current)
     },
-    []
+    [],
   )
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(value)
       setCopied(true)
-      toast.success(successMessage)
+      toast.success(tx(successMessage))
       if (resetTimer.current) clearTimeout(resetTimer.current)
       resetTimer.current = setTimeout(() => setCopied(false), resetDelay)
     } catch {
-      toast.error(errorMessage)
+      toast.error(tx(errorMessage))
     }
   }
 

@@ -1,0 +1,286 @@
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table"
+import { objectColumns } from "./object-columns"
+import { useLocalAtom } from "@/hooks/use-local-atom"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+  ResponsiveDialogBody,
+  ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog"
+import { deleteStorageObjects } from "../api"
+import { useMemo, useRef } from "react"
+import { atom, useAtom } from "jotai"
+import { ImagePreviewDialog } from "./image-preview-dialog"
+import { useCurrentTime } from "@/hooks/use-current-time"
+import { Trash2Icon, XIcon } from "lucide-react"
+import { useObjectTranslation } from "@/local/object"
+import { useTranslation } from "@/components/providers/language-context"
+import { NoItems } from "@/components/async-state"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table"
+import { type StorageObjectEntry } from "../api"
+
+type ObjectDirectoryProps = {
+  storageId: string
+  canDelete: boolean
+  items: StorageObjectEntry[]
+  view: "folders" | "files"
+  onOpenFolder: (prefix: string) => void
+}
+
+const columnClasses: Record<string, string> = {
+  selection: "w-9 pl-3 pr-0 text-left",
+  name: "pl-1",
+  kind: "w-24 text-muted-foreground",
+  size: "w-24 text-right tabular-nums",
+  modified: "w-44 text-xs text-muted-foreground",
+  actions: "sticky right-0 w-12 bg-background p-1 text-center",
+}
+
+export function ObjectDirectory({
+  items,
+  storageId,
+  canDelete,
+  view,
+  onOpenFolder,
+}: ObjectDirectoryProps) {
+  const tx = useObjectTranslation()
+  const { locale } = useTranslation()
+  const now = useCurrentTime()
+  const queryClient = useQueryClient()
+  const [selected, setSelected] = useLocalAtom<string[]>([])
+  const [confirmKeys, setConfirmKeys] = useLocalAtom<string[] | null>(null)
+  const [failures, setFailures] = useLocalAtom<
+    { key: string; message: string }[]
+  >([])
+  const fileKeys = items
+    .filter((item) => item.kind === "file")
+    .map((item) => item.key)
+  const selectedKeys = selected.filter((key) => fileKeys.includes(key))
+  const deleting = useMutation({
+    mutationFn: (keys: string[]) => deleteStorageObjects(storageId, keys),
+    onSuccess: (result) => {
+      setSelected(result.failed.map((item) => item.key))
+      setFailures(result.failed)
+      setConfirmKeys(null)
+      if (result.failed.length) {
+        toast.error(
+          tx("已删除 {0} 个文件，{1} 个失败", {
+            0: result.deleted.length,
+            1: result.failed.length,
+          }),
+        )
+      } else {
+        toast.success(tx("已删除 {0} 个文件", { 0: result.deleted.length }))
+      }
+      void queryClient.invalidateQueries({
+        queryKey: ["storage-objects", storageId],
+      })
+      void queryClient.invalidateQueries({ queryKey: ["files"] })
+    },
+    onError: (error) => toast.error(tx(error.message)),
+  })
+  const previewAtom = useMemo(() => atom<StorageObjectEntry | null>(null), [])
+  const [preview, setPreview] = useAtom(previewAtom)
+  const previewTrigger = useRef<HTMLAnchorElement | null>(null)
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns row modeling.
+  const table = useReactTable({
+    data: items,
+    columns: objectColumns({
+      tx,
+      canDelete,
+      selectedKeys,
+      fileKeys,
+      pending: deleting.isPending,
+      onSelect: setSelected,
+      view,
+      onOpenFolder,
+      onPreview: (item, trigger) => {
+        previewTrigger.current = trigger
+        setPreview(item)
+      },
+      now,
+      locale,
+    }),
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (item) => `${item.kind}:${item.key}`,
+    manualPagination: true,
+    manualFiltering: true,
+  })
+  if (!items.length)
+    return (
+      <NoItems
+        title={tx("暂无对象")}
+        description={tx("此对象前缀下没有内容，请调整搜索或返回上级目录。")}
+      />
+    )
+
+  return (
+    <div className="relative flex h-full min-h-0 flex-col">
+      {canDelete && selectedKeys.length > 0 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-3">
+          <div
+            role="group"
+            aria-label={tx("批量删除文件")}
+            className="pointer-events-auto flex max-w-full items-center gap-2 rounded-xl border bg-background p-2 shadow-lg"
+          >
+            <span
+              className="whitespace-nowrap rounded-md border bg-muted/40 px-2.5 py-1 text-xs font-medium tabular-nums"
+              aria-live="polite"
+            >
+              {tx("{0} 已选", { 0: selectedKeys.length })}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={tx("取消选择")}
+              disabled={deleting.isPending}
+              onClick={() => setSelected([])}
+            >
+              <XIcon className="size-4" />
+            </Button>
+            <span aria-hidden="true" className="h-5 w-px bg-border" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              disabled={deleting.isPending}
+              onClick={() => setConfirmKeys([...selectedKeys])}
+            >
+              <Trash2Icon className="size-4" />
+              {tx("删除")}
+            </Button>
+          </div>
+        </div>
+      )}
+      {failures.length > 0 && (
+        <ul
+          className="max-h-32 overflow-auto px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {failures.map((item) => (
+            <li key={item.key}>
+              {item.key}: {tx(item.message)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <ResponsiveDialog
+        open={confirmKeys !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting.isPending) setConfirmKeys(null)
+        }}
+      >
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{tx("批量删除文件")}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
+              {tx(
+                "确定删除选中的 {0} 个文件吗？将删除云端对象，此操作无法在本应用中撤销。",
+                { 0: confirmKeys?.length ?? 0 },
+              )}
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogBody>
+            <ul className="max-h-48 overflow-auto text-sm">
+              {confirmKeys?.map((key) => (
+                <li key={key} className="break-all">
+                  {key}
+                </li>
+              ))}
+            </ul>
+          </ResponsiveDialogBody>
+          <ResponsiveDialogFooter>
+            <Button
+              variant="outline"
+              disabled={deleting.isPending}
+              onClick={() => setConfirmKeys(null)}
+            >
+              {tx("取消")}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting.isPending || !confirmKeys?.length}
+              onClick={() => {
+                if (confirmKeys) deleting.mutate(confirmKeys)
+              }}
+            >
+              {tx(deleting.isPending ? "正在删除…" : "确认删除")}
+            </Button>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
+      {preview && (
+        <ImagePreviewDialog
+          key={`${preview.storage_id}:${preview.key}`}
+          item={preview}
+          onClose={() => setPreview(null)}
+          onRestoreFocus={() => previewTrigger.current?.focus()}
+        />
+      )}
+      <div
+        className={`min-h-0 flex-1 overflow-auto ${selectedKeys.length ? "pb-24" : ""}`}
+      >
+        <Table className="min-w-[40rem] table-fixed md:[&_th]:h-8 md:[&_td]:py-0.5">
+          <TableHeader>
+            {table.getHeaderGroups().map((group) => (
+              <TableRow
+                key={group.id}
+                className="bg-muted/40 hover:bg-muted/40"
+              >
+                {group.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={columnClasses[header.column.id]}
+                  >
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                data-state={
+                  selectedKeys.includes(row.original.key)
+                    ? "selected"
+                    : undefined
+                }
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className={columnClasses[cell.column.id]}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}

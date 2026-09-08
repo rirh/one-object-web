@@ -5,7 +5,7 @@ import { toast } from "sonner"
 
 import { useTranslation } from "@/components/providers/language-context"
 import { Switch } from "@/components/ui/switch"
-import { authPermissionsQuery } from "@/views/account/permissions-api"
+import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
 import {
   deleteRole,
   listPermissions,

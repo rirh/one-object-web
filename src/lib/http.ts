@@ -8,14 +8,15 @@ export class ApiError extends Error {
 export async function request<T>(
   path: string,
   init: RequestInit = {},
+  timeoutMs = 160_000,
 ): Promise<T> {
   const response = await fetch(path, {
     ...init,
     credentials: "same-origin",
     cache: "no-store",
     signal: init.signal
-      ? AbortSignal.any([init.signal, AbortSignal.timeout(160_000)])
-      : AbortSignal.timeout(160_000),
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
+      : AbortSignal.timeout(timeoutMs),
   })
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as {

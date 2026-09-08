@@ -1,3 +1,4 @@
+import { useObjectTranslation } from "@/local/object"
 import {
   useInfiniteQuery,
   useMutation,
@@ -33,7 +34,7 @@ import { rootRequest } from "@/lib/request"
 import { ResourceTable } from "../shared/resource-table"
 import { AdminErrorAlert } from "../shared/common"
 import { listRoles, rbacQueryKeys, assignUserRoles } from "../../api/rbac-api"
-import { authPermissionsQuery } from "@/views/account/permissions-api"
+import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
 import { formatAdminTime } from "../shared/format"
 type User = {
   user_id: string
@@ -46,6 +47,8 @@ type User = {
 type UserPage = { items: User[]; total: number; limit: number }
 type Editor = { kind: "create" | "edit" | "roles" | "delete"; user?: User }
 export function UsersPanel({ permissions }: { permissions: string[] }) {
+  const tx = useObjectTranslation()
+
   const client = useQueryClient()
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<"all" | User["status"]>("all")
@@ -77,32 +80,32 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
     () => [
       {
         accessorKey: "display_name",
-        header: "用户",
+        header: tx("用户"),
         cell: ({ row }) => (
           <div className="font-medium">{row.original.display_name}</div>
         ),
       },
-      { accessorKey: "oidc_sub", header: "One User 账号标识" },
+      { accessorKey: "oidc_sub", header: tx("One User 账号标识") },
       {
         accessorKey: "status",
-        header: "状态",
+        header: tx("状态"),
         cell: ({ getValue }) => (
           <Badge variant={getValue() === "active" ? "secondary" : "outline"}>
             {getValue() === "active"
-              ? "启用"
+              ? tx("启用")
               : getValue() === "disabled"
-                ? "停用"
-                : "已删除"}
+                ? tx("停用")
+                : tx("已删除")}
           </Badge>
         ),
       },
       {
         accessorKey: "created_at",
-        header: "创建时间",
+        header: tx("创建时间"),
         cell: ({ getValue }) => formatAdminTime(getValue<string>()),
       },
     ],
-    [],
+    [tx],
   )
   return (
     <>
@@ -114,12 +117,12 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         statusFilter={status}
         onStatusFilterChange={setStatus}
         statusFilterOptions={[
-          { value: "all", label: "全部" },
-          { value: "active", label: "启用" },
-          { value: "disabled", label: "停用" },
-          { value: "deleted", label: "已删除" },
+          { value: "all", label: tx("全部") },
+          { value: "active", label: tx("启用") },
+          { value: "disabled", label: tx("停用") },
+          { value: "deleted", label: tx("已删除") },
         ]}
-        searchPlaceholder="搜索已加载用户"
+        searchPlaceholder={tx("搜索已加载用户")}
         isLoading={users.isPending}
         isFetching={users.isFetching}
         error={users.error}
@@ -129,8 +132,8 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
             ? () => setEditor({ kind: "create" })
             : undefined
         }
-        createLabel="新增用户"
-        emptyLabel="暂无用户"
+        createLabel={tx("新增用户")}
+        emptyLabel={tx("暂无用户")}
         getRowId={(u) => u.user_id}
         renderRowActions={(user) =>
           user.status !== "deleted" && (
@@ -141,7 +144,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
                   variant="ghost"
                   onClick={() => setEditor({ kind: "edit", user })}
                 >
-                  编辑
+                  {tx("编辑")}
                 </Button>
               )}
               {permissions.includes("object:user:assign") &&
@@ -151,7 +154,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
                     variant="ghost"
                     onClick={() => setEditor({ kind: "roles", user })}
                   >
-                    角色
+                    {tx("角色")}
                   </Button>
                 )}
               {permissions.includes("object:user:delete") && (
@@ -160,7 +163,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
                   variant="ghost"
                   onClick={() => setEditor({ kind: "delete", user })}
                 >
-                  删除
+                  {tx("删除")}
                 </Button>
               )}
             </div>
@@ -174,7 +177,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
             disabled={users.isFetchingNextPage}
             onClick={() => void users.fetchNextPage()}
           >
-            加载更多用户
+            {tx("加载更多用户")}
           </Button>
         </div>
       )}
@@ -206,6 +209,8 @@ function UserDialog({
   close: () => void
   saved: () => Promise<void>
 }) {
+  const tx = useObjectTranslation()
+
   const [name, setName] = useState(editor.user?.display_name || "")
   const [sub, setSub] = useState("")
   const [status, setStatus] = useState(editor.user?.status || "active")
@@ -234,10 +239,10 @@ function UserDialog({
     onSuccess: saved,
   })
   const title = {
-    create: "新增用户",
-    edit: "编辑用户",
-    roles: "分配角色",
-    delete: "删除用户",
+    create: tx("新增用户"),
+    edit: tx("编辑用户"),
+    roles: tx("分配角色"),
+    delete: tx("删除用户"),
   }[editor.kind]
   function submit(e: FormEvent) {
     e.preventDefault()
@@ -256,9 +261,9 @@ function UserDialog({
             <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
               {editor.kind === "create"
-                ? "绑定已有 One User 账号，创建后再分配角色。"
+                ? tx("绑定已有 One User 账号，创建后再分配角色。")
                 : editor.kind === "delete"
-                  ? "删除后禁止访问，已上传文件和操作记录保留。"
+                  ? tx("删除后禁止访问，已上传文件和操作记录保留。")
                   : editor.user?.display_name}
             </ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
@@ -266,7 +271,9 @@ function UserDialog({
             {mutation.error && <AdminErrorAlert error={mutation.error} />}
             {editor.kind === "create" && (
               <Field>
-                <FieldLabel htmlFor="oidc-sub">One User 账号标识</FieldLabel>
+                <FieldLabel htmlFor="oidc-sub">
+                  {tx("One User 账号标识")}
+                </FieldLabel>
                 <Input
                   id="oidc-sub"
                   required
@@ -278,7 +285,7 @@ function UserDialog({
             )}
             {(editor.kind === "create" || editor.kind === "edit") && (
               <Field>
-                <FieldLabel htmlFor="display-name">显示名称</FieldLabel>
+                <FieldLabel htmlFor="display-name">{tx("显示名称")}</FieldLabel>
                 <Input
                   id="display-name"
                   required
@@ -290,7 +297,7 @@ function UserDialog({
             )}
             {editor.kind === "edit" && (
               <Field>
-                <FieldLabel>状态</FieldLabel>
+                <FieldLabel>{tx("状态")}</FieldLabel>
                 <Select
                   value={status}
                   onValueChange={(value) =>
@@ -301,8 +308,8 @@ function UserDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">启用</SelectItem>
-                    <SelectItem value="disabled">停用</SelectItem>
+                    <SelectItem value="active">{tx("启用")}</SelectItem>
+                    <SelectItem value="disabled">{tx("停用")}</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
@@ -328,7 +335,7 @@ function UserDialog({
                         }
                       />
                       {role.role_name}
-                      {role.status !== "active" && "（已停用）"}
+                      {role.status !== "active" && tx("（已停用）")}
                     </label>
                   ))}
                 </div>
@@ -338,7 +345,7 @@ function UserDialog({
           <ResponsiveDialogFooter>
             <ResponsiveDialogClose asChild>
               <Button variant="outline" disabled={mutation.isPending}>
-                取消
+                {tx("取消")}
               </Button>
             </ResponsiveDialogClose>
             <DialogActionButton
@@ -349,7 +356,7 @@ function UserDialog({
               }
               variant={editor.kind === "delete" ? "destructive" : "default"}
             >
-              {mutation.isPending ? "保存中…" : "确认"}
+              {mutation.isPending ? tx("保存中…") : tx("确认")}
             </DialogActionButton>
           </ResponsiveDialogFooter>
         </form>

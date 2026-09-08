@@ -1,6 +1,7 @@
+import { useObjectTranslation } from "@/local/object"
 import { useQuery } from "@tanstack/react-query"
 import { useSearchParams } from "react-router"
-import { authPermissionsQuery } from "@/views/account/permissions-api"
+import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
 import { RolesPanel } from "./components/roles"
 import { PermissionsPanel } from "./components/permissions"
 import { UsersPanel } from "./components/users"
@@ -14,6 +15,8 @@ const sections: Record<string, string> = {
   "operation-logs": "object:operation-log:list",
 }
 export default function AdminPage() {
+  const tx = useObjectTranslation()
+
   const [query] = useSearchParams()
   const section = query.get("section") || "users"
   const access = useQuery(authPermissionsQuery)
@@ -25,7 +28,7 @@ export default function AdminPage() {
   )
     return (
       <div className="p-5">
-        <AdminErrorAlert error={new Error("没有此管理页面的访问权限")} />
+        <AdminErrorAlert error={new Error(tx("没有此管理页面的访问权限"))} />
       </div>
     )
   const permissions = access.data.permissions

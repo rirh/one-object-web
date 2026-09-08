@@ -80,6 +80,11 @@ type ResourceTableProps<TData, TFilter extends string = StatusFilter> = {
   getSubRows?: (row: TData) => TData[] | undefined
   treeColumnId?: string
   renderRowActions?: (row: TData) => React.ReactNode
+  stickyActions?: boolean
+  inlineActions?: boolean
+  actionsLabel?: string
+  onRowClick?: (row: TData) => void
+  getRowClassName?: (row: TData) => string | undefined
   getRowCanSelect?: (row: TData) => boolean
   onBulkDelete?: (rows: TData[], clearSelection: () => void) => void
   isBulkDeleting?: boolean
@@ -90,6 +95,8 @@ type ResourceTableProps<TData, TFilter extends string = StatusFilter> = {
   }) => Promise<unknown> | void
   isRowReordering?: boolean
   showPaginationControls?: boolean
+  showToolbar?: boolean
+  fitContent?: boolean
   compact?: boolean
 }
 
@@ -116,12 +123,19 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
   getSubRows,
   treeColumnId,
   renderRowActions,
+  stickyActions = true,
+  inlineActions = false,
+  actionsLabel,
+  onRowClick,
+  getRowClassName,
   getRowCanSelect,
   onBulkDelete,
   isBulkDeleting = false,
   onRowReorder,
   isRowReordering = false,
   showPaginationControls = true,
+  showToolbar = true,
+  fitContent = false,
   compact = false,
 }: ResourceTableProps<TData, TFilter>) {
   const { locale } = useTranslation()
@@ -188,14 +202,32 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
         id: "actions",
         enableHiding: false,
         enableSorting: false,
-        header: zh ? "操作" : "Actions",
+        header: () =>
+          actionsLabel ??
+          (inlineActions ? (
+            <span className="sr-only">{zh ? "操作" : "Actions"}</span>
+          ) : zh ? (
+            "操作"
+          ) : (
+            "Actions"
+          )),
         cell: ({ row }) => renderRowActions(row.original),
         meta: {
-          label: zh ? "操作" : "Actions",
-          headerClassName:
-            "sticky right-0 z-20 w-20 border-l bg-muted text-right",
-          cellClassName:
-            "sticky right-0 z-10 border-l bg-background text-right",
+          label: actionsLabel ?? (zh ? "操作" : "Actions"),
+          headerClassName: inlineActions
+            ? actionsLabel
+              ? "w-16 text-center"
+              : "w-12 text-right"
+            : stickyActions
+              ? "sticky right-0 z-20 w-20 border-l bg-muted text-right"
+              : "w-20 border-l bg-muted text-right",
+          cellClassName: inlineActions
+            ? actionsLabel
+              ? "w-16 text-center"
+              : "w-12 text-right"
+            : stickyActions
+              ? "sticky right-0 z-10 border-l bg-background text-right"
+              : "w-20 border-l bg-background text-right",
         },
       })
     }
@@ -206,6 +238,9 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
     enableSelection,
     isRowReordering,
     renderRowActions,
+    stickyActions,
+    inlineActions,
+    actionsLabel,
     zh,
   ])
 
@@ -281,35 +316,37 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
 
   return (
     <section className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      <ResourceTableToolbar
-        allRowsExpanded={allRowsExpanded}
-        compact={compact}
-        createLabel={createLabel}
-        filterOptions={filterOptions}
-        hasExpandableRows={Boolean(getSubRows && expandableRows.length > 0)}
-        isFetching={isFetching}
-        onCreate={onCreate}
-        onRefresh={onRefresh}
-        onRefreshAnimationIteration={onRefreshAnimationIteration}
-        onSearchChange={(value) => {
-          table.setPageIndex(0)
-          setRowSelection({})
-          onSearchChange(value)
-        }}
-        onStatusFilterChange={(value) => {
-          table.setPageIndex(0)
-          setRowSelection({})
-          onStatusFilterChange(value)
-        }}
-        onToggleExpanded={() => setExpanded(allRowsExpanded ? {} : true)}
-        searchPlaceholder={searchPlaceholder}
-        searchValue={searchValue}
-        statusFilter={statusFilter}
-        statusFilterControl={statusFilterControl}
-        statusFilterLabel={statusFilterLabel}
-        table={table}
-        zh={zh}
-      />
+      {showToolbar ? (
+        <ResourceTableToolbar
+          allRowsExpanded={allRowsExpanded}
+          compact={compact}
+          createLabel={createLabel}
+          filterOptions={filterOptions}
+          hasExpandableRows={Boolean(getSubRows && expandableRows.length > 0)}
+          isFetching={isFetching}
+          onCreate={onCreate}
+          onRefresh={onRefresh}
+          onRefreshAnimationIteration={onRefreshAnimationIteration}
+          onSearchChange={(value) => {
+            table.setPageIndex(0)
+            setRowSelection({})
+            onSearchChange(value)
+          }}
+          onStatusFilterChange={(value) => {
+            table.setPageIndex(0)
+            setRowSelection({})
+            onStatusFilterChange(value)
+          }}
+          onToggleExpanded={() => setExpanded(allRowsExpanded ? {} : true)}
+          searchPlaceholder={searchPlaceholder}
+          searchValue={searchValue}
+          statusFilter={statusFilter}
+          statusFilterControl={statusFilterControl}
+          statusFilterLabel={statusFilterLabel}
+          table={table}
+          zh={zh}
+        />
+      ) : null}
 
       {errorText ? (
         <div className="m-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -341,7 +378,8 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
           >
             <Table
               className={cn(
-                "min-w-full",
+                fitContent ? "w-max min-w-0" : "min-w-full",
+                inlineActions && "[&_tbody_tr:last-child]:border-b",
                 compact &&
                   "[&_td]:h-10 [&_td]:px-2.5 [&_td]:py-1.5 [&_th]:h-9 [&_th]:px-2.5",
               )}
@@ -378,6 +416,10 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
                       key={row.id}
                       row={row}
                       disabled={!enableRowReorder || isRowReordering}
+                      onClick={
+                        onRowClick ? () => onRowClick(row.original) : undefined
+                      }
+                      className={getRowClassName?.(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => {
                         const meta = getColumnMeta(cell.column)
@@ -389,6 +431,11 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
                           <TableCell
                             key={cell.id}
                             className={meta.cellClassName}
+                            onClick={
+                              cell.column.id === "actions"
+                                ? (event) => event.stopPropagation()
+                                : undefined
+                            }
                           >
                             {treeColumnId === cell.column.id ? (
                               <TreeCell row={row}>{content}</TreeCell>

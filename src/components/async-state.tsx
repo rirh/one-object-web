@@ -1,3 +1,4 @@
+import { useObjectTranslation } from "@/local/object"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import {
   Empty,
@@ -9,7 +10,9 @@ import { Button } from "@/components/ui/button"
 import { LoadingState } from "@/components/loading-state"
 import { ApiError } from "@/lib/http"
 export function Loading() {
-  return <LoadingState>正在加载…</LoadingState>
+  const tx = useObjectTranslation()
+
+  return <LoadingState>{tx("正在加载…")}</LoadingState>
 }
 export function Failure({
   error,
@@ -18,18 +21,20 @@ export function Failure({
   error: Error
   retry?: () => void
 }) {
+  const tx = useObjectTranslation()
+
   return (
     <Alert variant="destructive">
-      <AlertTitle>请求未完成</AlertTitle>
+      <AlertTitle>{tx("请求未完成")}</AlertTitle>
       <AlertDescription>
-        {error.message}
+        {tx(error.message)}
         {error instanceof ApiError && error.status === 401 ? (
           <Button asChild variant="outline">
-            <a href="/api/auth/oidc/start">重新登录</a>
+            <a href="/api/auth/oidc/start">{tx("重新登录")}</a>
           </Button>
         ) : retry ? (
           <Button variant="outline" onClick={retry}>
-            重试
+            {tx("重试")}
           </Button>
         ) : null}
       </AlertDescription>

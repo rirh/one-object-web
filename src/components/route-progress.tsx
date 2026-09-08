@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react"
+import { useEffect, useLayoutEffect, useRef } from "react"
 import { useLocation } from "react-router"
 import NProgress from "nprogress"
 import "nprogress/nprogress.css"
@@ -10,8 +10,17 @@ let pendingRoutes = 0
 
 export function RouteProgress() {
   const location = useLocation()
+  const previousPath = useRef(location.pathname)
 
   useLayoutEffect(() => {
+    const isFilesQueryChange =
+      previousPath.current === "/dashboard/files" &&
+      location.pathname === "/dashboard/files"
+    previousPath.current = location.pathname
+    if (isFilesQueryChange) {
+      NProgress.done()
+      return
+    }
     NProgress.start()
     const timer = window.setTimeout(() => {
       if (pendingRoutes === 0) NProgress.done()

@@ -22,7 +22,7 @@ import {
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { authPermissionsQuery } from "@/views/account/permissions-api"
+import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
 import {
   createRole,
   rbacQueryKeys,
