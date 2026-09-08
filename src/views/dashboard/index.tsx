@@ -35,6 +35,7 @@ export default function Dashboard() {
     access.data?.permissions.includes(permission) ?? false
   const canFiles = can("object:files:read")
   const canStorage = can("object:storage:read")
+  const canBuckets = can("object:bucket:read")
   const files = useQuery({
     queryKey: ["files", 0, ""],
     queryFn: ({ signal }) => listFiles(0, "", signal),
@@ -48,7 +49,7 @@ export default function Dashboard() {
   const storage = useQuery({
     queryKey: ["storage-connections"],
     queryFn: ({ signal }) => listConnections(signal),
-    enabled: canStorage,
+    enabled: canStorage || canBuckets,
   })
   const liveness = useQuery({
     queryKey: ["service-status", "liveness"],
@@ -91,84 +92,91 @@ export default function Dashboard() {
           </Button>
         )}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard
-          label={tx("文件总数")}
-          icon={FilesIcon}
-          value={metric(canFiles, files.isPending, files.data?.total)}
-          detail={
-            canFiles ? tx("当前账户可访问的文件") : tx("暂无文件查看权限")
-          }
-        />
-        <MetricCard
-          label={tx("厂商数量")}
-          icon={CloudIcon}
-          value={metric(
-            canStorage,
-            accounts.isPending,
-            accounts.data?.items.length,
+      {(canFiles || canStorage || canBuckets) && (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {canFiles && (
+            <MetricCard
+              label={tx("文件总数")}
+              icon={FilesIcon}
+              href="/dashboard/files"
+              value={metric(true, files.isPending, files.data?.total)}
+              detail={tx("当前账户可访问的文件")}
+            />
           )}
-          detail={canStorage ? tx("已配置的厂商账户") : tx("暂无存储查看权限")}
-        />
-        <MetricCard
-          label={tx("存储桶")}
-          icon={DatabaseIcon}
-          value={metric(
-            canStorage,
-            storage.isPending,
-            storage.data?.items.length,
+          {canStorage && (
+            <MetricCard
+              label={tx("厂商数量")}
+              icon={CloudIcon}
+              href="/dashboard/storage"
+              value={metric(
+                true,
+                accounts.isPending,
+                accounts.data?.items.length,
+              )}
+              detail={tx("已配置的厂商账户")}
+            />
           )}
-          detail={
-            !canStorage
-              ? tx("暂无存储查看权限")
-              : storage.isPending
-                ? tx("加载启用状态中")
-                : storage.error
-                  ? tx("加载失败")
-                  : (storage.data?.items.filter((c) => c.enabled).length ?? 0) +
-                    tx(" 个已启用")
-          }
-        />
-      </div>
-      <div className="grid min-w-0 gap-3">
-        <Card size="sm" className="min-w-0">
-          <CardHeader>
-            <CardTitle>{tx("最近上传")}</CardTitle>
-            <CardDescription>
-              {tx("当前账户最近上传的 6 个文件。")}
-            </CardDescription>
-            {canFiles && (
-              <CardAction>
-                <Button asChild variant="ghost" size="sm">
-                  <Link to="/dashboard/files">
-                    {tx("查看全部")}
-                    <ArrowRightIcon />
-                  </Link>
-                </Button>
-              </CardAction>
-            )}
-          </CardHeader>
-          <CardContent className="min-w-0">
-            {!canFiles ? (
-              <NoItems
-                title={tx("暂无查看权限")}
-                description={tx("获得文件查看权限后可查看最近上传。")}
-              />
-            ) : files.isPending ? (
-              <Loading />
-            ) : files.error ? (
-              <Failure error={files.error} retry={() => void files.refetch()} />
-            ) : files.data.items.length === 0 ? (
-              <NoItems
-                title={tx("暂无文件")}
-                description={tx("上传文件后，会在这里显示。")}
-              />
-            ) : (
-              <RecentFiles files={files.data.items.slice(0, 6)} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          {canBuckets && (
+            <MetricCard
+              label={tx("存储桶")}
+              icon={DatabaseIcon}
+              href="/dashboard/buckets"
+              value={metric(
+                true,
+                storage.isPending,
+                storage.data?.items.length,
+              )}
+              detail={
+                storage.isPending
+                  ? tx("加载启用状态中")
+                  : storage.error
+                    ? tx("加载失败")
+                    : (storage.data?.items.filter((c) => c.enabled).length ??
+                        0) + tx(" 个已启用")
+              }
+            />
+          )}
+        </div>
+      )}
+      {canFiles && (
+        <div className="grid min-w-0 gap-3">
+          <Card size="sm" className="min-w-0 border-0 shadow-none ring-0">
+            <CardHeader>
+              <CardTitle>{tx("最近上传")}</CardTitle>
+              <CardDescription>
+                {tx("当前账户最近上传的 6 个文件。")}
+              </CardDescription>
+              {canFiles && (
+                <CardAction>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to="/dashboard/files">
+                      {tx("查看全部")}
+                      <ArrowRightIcon />
+                    </Link>
+                  </Button>
+                </CardAction>
+              )}
+            </CardHeader>
+            <CardContent className="min-w-0">
+              {files.isPending ? (
+                <Loading />
+              ) : files.error ? (
+                <Failure
+                  error={files.error}
+                  retry={() => void files.refetch()}
+                />
+              ) : files.data.items.length === 0 ? (
+                <NoItems
+                  title={tx("暂无文件")}
+                  description={tx("上传文件后，会在这里显示。")}
+                />
+              ) : (
+                <RecentFiles files={files.data.items.slice(0, 6)} />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {accounts.error && canStorage && (
         <Failure error={accounts.error} retry={() => void accounts.refetch()} />
       )}
@@ -187,10 +195,10 @@ export default function Dashboard() {
             descriptionKey="status.readiness.description"
             query={readiness}
           />
-          <div className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3.5 py-2.5 sm:col-span-2 xl:col-span-1">
+          <div className="flex min-h-12 items-center justify-between gap-3 rounded-lg bg-card px-3.5 py-2.5 shadow-none sm:col-span-2 xl:col-span-1">
             <h3 className="text-sm font-medium">{tx("应用接入")}</h3>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/dashboard/integration">
+              <Link to="/guide">
                 {tx("接入指南")}
                 <ArrowRightIcon />
               </Link>

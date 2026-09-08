@@ -1,266 +1,354 @@
-import { useObjectTranslation } from "@/local/object"
-import { useCurrentTime } from "@/hooks/use-current-time"
-import { fromUnixTime, isBefore } from "date-fns"
-import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
-import { Controller, useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import type { ColumnDef } from "@tanstack/react-table"
+import { format, fromUnixTime } from "date-fns"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldError,
-  FieldSet,
-  FieldLegend,
-} from "@/components/ui/field"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+  BookOpenIcon,
+  RefreshCwIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon,
+} from "lucide-react"
+
+import { useCurrentTime } from "@/hooks/use-current-time"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { useTranslation } from "@/components/providers/language-context"
 import { Badge } from "@/components/ui/badge"
-import { SweepShine } from "@/components/sweep-shine"
-import { Loading, Failure, NoItems } from "@/components/async-state"
-import { date } from "@/lib/format"
-import { createKey, listKeys, revokeKey } from "./api"
-const scopes = [
-  ["uploads:write", "上传文件"],
-  ["files:read", "读取文件"],
-  ["files:delete", "删除文件"],
-] as const
-const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "请输入应用名称")
-    .max(100, "名称最多 100 个字符"),
-  expires_in_days: z
-    .number()
-    .int("有效天数必须为整数")
-    .min(1, "有效天数至少为 1 天")
-    .max(365, "有效天数最多为 365 天"),
-  scopes: z.array(z.string()).min(1, "至少选择一个权限"),
-})
-type Form = z.infer<typeof schema>
+import { formatKeyTime } from "./format"
+import { useObjectTranslation } from "@/local/object"
+import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
+import { ResourceTable } from "@/views/dashboard/admin/components/shared/resource-table"
+import { Button } from "@/components/ui/button"
+import { CopyButton } from "@/components/ui/copy-button"
+import { Switch } from "@/components/ui/switch"
+import { setKeyEnabled } from "./api"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { listKeys, deleteKey, rotateKey, type AppKey } from "./api"
+import { KeyDialog, type KeyDialogState } from "./key-dialog"
+import { KeyDeleteDialog } from "./delete-dialog"
+import { KeyRotateDialog } from "./rotate-dialog"
+
+type KeyStatus = "all" | "active" | "expired" | "never" | "revoked"
+
+function keyStatus(key: AppKey, now: Date): Exclude<KeyStatus, "all"> {
+  if (key.revoked) return "revoked"
+  if (key.expires_at === null) return "never"
+  return key.expires_at <= Math.floor(now.getTime() / 1000)
+    ? "expired"
+    : "active"
+}
+
+function formatKeyDate(timestamp: number) {
+  return format(fromUnixTime(timestamp), "yyyy-MM-dd HH:mm")
+}
+
 export default function KeysPage() {
   const tx = useObjectTranslation()
-
+  const { locale } = useTranslation()
+  const isMobile = useIsMobile()
   const now = useCurrentTime()
-  const access = useQuery(authPermissionsQuery)
-  const permissions = access.data?.permissions || []
   const client = useQueryClient()
-  const form = useForm<Form>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      name: "",
-      expires_in_days: 90,
-      scopes: ["uploads:write", "files:read"].filter((scope) =>
-        permissions.includes(`object:${scope}`),
-      ),
-    },
-  })
+  const access = useQuery(authPermissionsQuery)
+  const permissions = access.data?.permissions ?? []
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<KeyStatus>("all")
+  const [dialog, setDialog] = useState<KeyDialogState>(null)
+  const [keyToDelete, setKeyToDelete] = useState<AppKey | null>(null)
+  const [keyToRotate, setKeyToRotate] = useState<AppKey | null>(null)
   const query = useQuery({
     queryKey: ["keys"],
     queryFn: ({ signal }) => listKeys(signal),
   })
-  const create = useMutation({
-    mutationFn: createKey,
-    gcTime: 0,
-    onSuccess: () => {
-      form.reset()
-      void client.invalidateQueries({ queryKey: ["keys"] })
-    },
-  })
-  const revoke = useMutation({
-    mutationFn: revokeKey,
-    onSuccess: () => {
-      toast.success(tx("密钥已撤销"))
-      void client.invalidateQueries({ queryKey: ["keys"] })
+  const canCreate = permissions.includes("object:keys:create")
+  const canDeleteKey = permissions.includes("object:keys:revoke")
+  const remove = useMutation({
+    mutationFn: deleteKey,
+    onSuccess: async () => {
+      setKeyToDelete(null)
+      await client.invalidateQueries({ queryKey: ["keys"] })
+      toast.success(tx("授权已删除"))
     },
     onError: (error) => toast.error(tx(error.message)),
   })
-  const copy = useMutation({
-    mutationFn: (value: string) => navigator.clipboard.writeText(value),
-    onSuccess: () => toast.success(tx("已复制")),
-    onError: () => toast.error(tx("复制失败，请手动选择并复制")),
+  const rotate = useMutation({
+    mutationFn: rotateKey,
+    onSuccess: async () => {
+      setKeyToRotate(null)
+      await client.invalidateQueries({ queryKey: ["keys"] })
+      toast.success(tx("Token 已轮换，请复制新 Token"))
+    },
+    onError: (error) => toast.error(tx(error.message)),
   })
-  return (
-    <div className="flex flex-col gap-6">
-      <p className="text-sm text-muted-foreground">
-        {tx(
-          "为其他应用生成访问 Token，按需授予上传、读取和删除权限。Token 仅显示一次，请保存到应用后端。",
-        )}
-      </p>
-      {permissions.includes("object:keys:create") && (
-        <form
-          className="max-w-xl"
-          onSubmit={form.handleSubmit((input) => create.mutate(input))}
-        >
-          <FieldGroup>
-            <Field data-invalid={!!form.formState.errors.name}>
-              <FieldLabel htmlFor="app-name">{tx("应用名称")}</FieldLabel>
-              <Input
-                id="app-name"
-                placeholder={tx("例如 One User 头像服务")}
-                aria-invalid={!!form.formState.errors.name}
-                {...form.register("name")}
-              />
-              <FieldError>{form.formState.errors.name?.message}</FieldError>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="key-days">{tx("有效天数")}</FieldLabel>
-              <Input
-                id="key-days"
-                type="number"
-                min={1}
-                max={365}
-                {...form.register("expires_in_days", { valueAsNumber: true })}
-              />
-              <FieldError>
-                {form.formState.errors.expires_in_days?.message}
-              </FieldError>
-            </Field>
-            <FieldSet>
-              <FieldLegend>{tx("权限")}</FieldLegend>
-              <div className="flex flex-wrap gap-4">
-                {scopes
-                  .filter(([value]) => permissions.includes(`object:${value}`))
-                  .map(([value, label]) => (
-                    <Field key={value} orientation="horizontal">
-                      <Controller
-                        control={form.control}
-                        name="scopes"
-                        render={({ field }) => (
-                          <Checkbox
-                            id={value}
-                            checked={field.value.includes(value)}
-                            onCheckedChange={(checked) =>
-                              field.onChange(
-                                checked
-                                  ? [...field.value, value]
-                                  : field.value.filter(
-                                      (scope) => scope !== value,
-                                    ),
-                              )
-                            }
-                          />
-                        )}
-                      />
-                      <FieldLabel htmlFor={value}>{tx(label)}</FieldLabel>
-                    </Field>
-                  ))}
-              </div>
-              <FieldError>{form.formState.errors.scopes?.message}</FieldError>
-            </FieldSet>
-            <Button
-              className="self-start"
-              type="submit"
-              disabled={create.isPending || !!create.data}
-              aria-busy={create.isPending}
-            >
-              <SweepShine active={create.isPending}>
-                {tx("创建授权")}
-              </SweepShine>
-            </Button>
-          </FieldGroup>
-        </form>
-      )}
-      {create.error ? <Failure error={create.error} /> : null}
-      {create.data ? (
-        <Alert>
-          <AlertTitle>{tx("密钥仅显示一次")}</AlertTitle>
-          <AlertDescription>
-            <p>{tx("保存到接入应用的服务端环境变量中。")}</p>
-            <Input
-              aria-label={tx("新建应用密钥")}
-              readOnly
-              value={create.data.token}
-              className="font-mono"
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={copy.isPending}
-                aria-busy={copy.isPending}
-                onClick={() => copy.mutate(create.data.token)}
-              >
-                <SweepShine active={copy.isPending}>
-                  {tx("复制密钥")}
-                </SweepShine>
-              </Button>
-              <Button variant="outline" onClick={() => create.reset()}>
-                {tx("已保存，关闭")}
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      <h2 className="text-base font-medium">{tx("已授权应用")}</h2>
-      {query.isPending ? (
-        <Loading />
-      ) : query.error ? (
-        <Failure error={query.error} retry={() => void query.refetch()} />
-      ) : query.data.items.length ? (
-        <ul className="divide-y rounded-md border">
-          {query.data.items.map((key) => (
-            <li
-              key={key.id}
-              className="flex flex-wrap items-center justify-between gap-4 p-4"
-            >
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{key.name}</span>
-                  <Badge variant="secondary">
-                    {key.revoked
-                      ? tx("已撤销")
-                      : isBefore(fromUnixTime(key.expires_at), now)
-                        ? tx("已过期")
-                        : tx("有效")}
-                  </Badge>
-                </div>
-                <code className="break-all text-xs text-muted-foreground">
-                  {key.id}
-                </code>
-                <p className="text-xs text-muted-foreground">
-                  {key.scopes.join(" · ")} · {date(key.expires_at)}
-                  {tx("到期")}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                disabled={
-                  key.revoked ||
-                  revoke.isPending ||
-                  !permissions.includes("object:keys:revoke")
-                }
-                aria-busy={revoke.isPending && revoke.variables === key.id}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      tx("撤销 {0} 的密钥？接入应用将停止访问。", {
-                        0: key.name,
-                      }),
-                    )
-                  )
-                    revoke.mutate(key.id)
-                }}
-              >
-                <SweepShine
-                  active={revoke.isPending && revoke.variables === key.id}
-                >
-                  {tx("撤销")}
-                </SweepShine>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <NoItems
-          title={tx("暂无应用授权")}
-          description={tx("创建密钥后，其他应用即可接入统一上传。")}
-        />
-      )}
+  const toggle = useMutation({
+    mutationFn: setKeyEnabled,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["keys"] })
+    },
+    onError: (error) => toast.error(tx(error.message)),
+  })
+  const renderEnabled = (key: AppKey) => (
+    <div className="flex min-h-11 items-center gap-2 sm:min-h-8">
+      <Switch
+        checked={!key.revoked}
+        aria-label={`${key.name} ${tx("启用授权")}`}
+        disabled={
+          toggle.isPending || (key.revoked ? !canCreate : !canDeleteKey)
+        }
+        onCheckedChange={(enabled) => toggle.mutate({ id: key.id, enabled })}
+      />
+      <span className="text-xs text-muted-foreground">
+        {key.revoked ? tx("已停用") : tx("已启用")}
+      </span>
     </div>
+  )
+  const renderToken = (key: AppKey) =>
+    key.token ? (
+      <div className="flex min-h-11 w-fit max-w-full items-center gap-2 sm:min-h-8">
+        <code className="min-w-0 truncate text-xs" title={key.token}>
+          {key.token}
+        </code>
+        <CopyButton
+          value={key.token}
+          variant="ghost"
+          size="icon-sm"
+          className="size-11 shrink-0 sm:size-8"
+          aria-label={tx("复制密钥")}
+        />
+      </div>
+    ) : (
+      <span className="text-xs text-muted-foreground">
+        {tx("旧 Token 未保存")}
+      </span>
+    )
+  const rows = useMemo(() => {
+    const keyword = search.trim().toLowerCase()
+    return (query.data?.items ?? []).filter((key) => {
+      const state = keyStatus(key, now)
+      const matchesStatus = statusFilter === "all" || statusFilter === state
+      const matchesSearch =
+        !keyword ||
+        [
+          key.name,
+          key.id,
+          key.token,
+          ...key.scopes,
+          key.expires_at === null ? "" : formatKeyDate(key.expires_at),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword)
+      return matchesStatus && matchesSearch
+    })
+  }, [now, query.data?.items, search, statusFilter])
+  const columns: ColumnDef<AppKey>[] = [
+    {
+      accessorKey: "name",
+      header: tx("应用名称"),
+      cell: ({ row }) => (
+        <div className="min-w-0 space-y-1.5 max-sm:w-[calc(100vw-7rem)]">
+          {canCreate ? (
+            <button
+              type="button"
+              className="max-w-full truncate font-medium hover:underline"
+              onClick={() => setDialog({ kind: "edit", key: row.original })}
+            >
+              {row.original.name}
+            </button>
+          ) : (
+            <div className="max-w-64 truncate font-medium">
+              {row.original.name}
+            </div>
+          )}
+          {row.original.revoked ||
+          keyStatus(row.original, now) === "expired" ? (
+            <Badge variant="secondary">
+              {row.original.revoked ? tx("已停用") : tx("已过期")}
+            </Badge>
+          ) : null}
+          {isMobile ? (
+            <>
+              {renderToken(row.original)}
+              {renderEnabled(row.original)}
+              <time
+                className="block text-xs text-muted-foreground"
+                dateTime={fromUnixTime(row.original.created_at).toISOString()}
+                title={formatKeyDate(row.original.created_at)}
+              >
+                {tx("创建时间")} ·{" "}
+                {formatKeyTime(row.original.created_at, now, locale)}
+              </time>
+            </>
+          ) : null}
+        </div>
+      ),
+      meta: { label: tx("应用名称"), headerClassName: "min-w-48" },
+    },
+    {
+      accessorKey: "token",
+      header: tx("密钥"),
+      enableSorting: false,
+      cell: ({ row }) => renderToken(row.original),
+      meta: { label: tx("密钥"), headerClassName: "min-w-72" },
+    },
+    {
+      accessorKey: "created_at",
+      header: tx("创建时间"),
+      cell: ({ row }) => (
+        <time
+          className="whitespace-nowrap text-sm text-muted-foreground"
+          dateTime={fromUnixTime(row.original.created_at).toISOString()}
+          title={formatKeyDate(row.original.created_at)}
+        >
+          {formatKeyTime(row.original.created_at, now, locale)}
+        </time>
+      ),
+      meta: { label: tx("创建时间") },
+    },
+    {
+      id: "enabled",
+      header: tx("状态"),
+      cell: ({ row }) => renderEnabled(row.original),
+    },
+  ]
+
+  return (
+    <section className="flex min-h-0 flex-1 flex-col bg-background">
+      <div className="min-h-0 flex-1">
+        <ResourceTable
+          compact
+          columns={
+            isMobile
+              ? columns.filter(
+                  (column) =>
+                    "accessorKey" in column && column.accessorKey === "name",
+                )
+              : columns
+          }
+          data={rows}
+          emptyLabel={tx("暂无应用授权")}
+          error={query.error}
+          getRowId={(key) => key.id}
+          isFetching={query.isFetching || remove.isPending || rotate.isPending}
+          isLoading={query.isPending}
+          onCreate={canCreate ? () => setDialog({ kind: "create" }) : undefined}
+          createLabel={tx("新增授权")}
+          onRefresh={() => void query.refetch()}
+          onSearchChange={setSearch}
+          onStatusFilterChange={setStatusFilter}
+          stackedToolbar
+          statusFilterControl={isMobile ? "select" : "segmented"}
+          renderRowActions={(key) => {
+            const canEdit = canCreate
+            const canDelete = canDeleteKey
+            if (!canEdit && !canDelete) return null
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-11 sm:size-7"
+                    aria-label={key.name + tx("授权操作")}
+                    disabled={remove.isPending || rotate.isPending}
+                  >
+                    <MoreHorizontalIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuGroup>
+                    {canEdit ? (
+                      <DropdownMenuItem
+                        onSelect={() => setDialog({ kind: "edit", key })}
+                      >
+                        <PencilIcon />
+                        {tx("编辑")}
+                      </DropdownMenuItem>
+                    ) : null}
+                  </DropdownMenuGroup>
+                  {canEdit ? (
+                    <DropdownMenuItem onSelect={() => setKeyToRotate(key)}>
+                      <RefreshCwIcon />
+                      {tx("轮换 Token")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canDelete && canEdit ? <DropdownMenuSeparator /> : null}
+                  {canDelete ? (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => setKeyToDelete(key)}
+                    >
+                      <Trash2Icon />
+                      {tx("删除授权")}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }}
+          searchPlaceholder={tx("搜索应用名称、授权 ID 或权限")}
+          searchValue={search}
+          statusFilter={statusFilter}
+          statusFilterOptions={[
+            { value: "all", label: tx("全部") },
+            { value: "active", label: tx("有效") },
+            { value: "expired", label: tx("已过期") },
+            { value: "never", label: tx("不过期") },
+            { value: "revoked", label: tx("已停用") },
+          ]}
+          toolbarActions={
+            <Button asChild variant="ghost" size="sm">
+              <a href="/guide" target="_blank" rel="noreferrer">
+                <BookOpenIcon />
+                {tx("使用文档")}
+              </a>
+            </Button>
+          }
+        />
+      </div>
+      <KeyDialog
+        key={
+          dialog?.kind === "edit"
+            ? dialog.key.id
+            : dialog?.kind === "create"
+              ? "create"
+              : "closed"
+        }
+        dialog={dialog}
+        permissions={permissions}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+      />
+      <KeyRotateDialog
+        appKey={keyToRotate}
+        pending={rotate.isPending}
+        onConfirm={() => {
+          if (keyToRotate) rotate.mutate(keyToRotate.id)
+        }}
+        onOpenChange={(open) => {
+          if (!open && !rotate.isPending) setKeyToRotate(null)
+        }}
+      />
+      <KeyDeleteDialog
+        keyToDelete={keyToDelete}
+        pending={remove.isPending}
+        onConfirm={() => {
+          if (keyToDelete) remove.mutate(keyToDelete.id)
+        }}
+        onOpenChange={(open) => {
+          if (!open && !remove.isPending) setKeyToDelete(null)
+        }}
+      />
+    </section>
   )
 }

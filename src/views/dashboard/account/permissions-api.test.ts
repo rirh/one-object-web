@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { KeyRoundIcon, ShieldCheckIcon } from "lucide-react"
 import { buildNavigationGroups } from "@/components/app-shell/navigation"
 import {
   groupDashboardRoutes,
@@ -100,3 +101,30 @@ it.each(["/keys", "/dashboard/keys", "/authorizations"])(
     ).toEqual([])
   },
 )
+
+it("uses distinct icons for authorization and permission management", () => {
+  const navigation = buildNavigationGroups({
+    user_id: "100",
+    super_admin: false,
+    permissions: [],
+    roles: [],
+    buttons: [],
+    routes: groupDashboardRoutes([
+      {
+        ...page("2005", "/authorizations"),
+        meta: { title: "授权管理", icon: "key-round" },
+      },
+      {
+        ...page("2023", "/admin/permissions"),
+        meta: { title: "权限管理", icon: "key-round" },
+      },
+    ]),
+  }).flatMap((group) => group.items)
+
+  expect(navigation.find((item) => item.id === "authorizations")?.icon).toBe(
+    KeyRoundIcon,
+  )
+  expect(navigation.find((item) => item.id === "admin-permissions")?.icon).toBe(
+    ShieldCheckIcon,
+  )
+})

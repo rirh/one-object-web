@@ -224,12 +224,32 @@ export const core = {
   在: "In ",
   应用密钥: "Application keys",
   授权管理: "Authorization management",
+  新增授权: "Add authorization",
+  编辑授权: "Edit authorization",
+  授权已创建: "Authorization created",
+  授权已修改: "Authorization updated",
+  授权操作: "Authorization actions",
   创建授权: "Create authorization",
   已授权应用: "Authorized applications",
   暂无应用授权: "No application authorizations",
+  到期时间: "Expires",
+  "搜索应用名称、授权 ID 或权限":
+    "Search application name, authorization ID or permission",
+  无此权限: "Permission unavailable",
+  "当前账号没有可授予的应用权限。":
+    "The current account has no application permissions to grant.",
+  "修改授权信息不会生成新的 Token。":
+    "Editing authorization information does not generate a new Token.",
+  "创建后 Token 会持续显示在授权列表中。":
+    "The Token remains visible in the authorization list after creation.",
+  撤销授权: "Revoke authorization",
+  "撤销后该应用将立即停止访问，且不能恢复。":
+    "The application will lose access immediately and cannot be restored.",
+  确认撤销: "Confirm revoke",
+  "撤销中…": "Revoking…",
   "例如 One User 头像服务": "For example, One User avatars",
-  "为其他应用生成访问 Token，按需授予上传、读取和删除权限。Token 仅显示一次，请保存到应用后端。":
-    "Generate access tokens for other applications with upload, read and delete permissions as needed. Tokens are shown once; store them in your application backend.",
+  "为其他应用生成访问 Token，按需授予上传、读取和删除权限。Token 会持续显示在授权列表中。":
+    "Generate access tokens for other applications with upload, read and delete permissions as needed. Tokens remain visible in the authorization list.",
   "创建专用密钥，选择需要的权限。":
     "create a dedicated key and select the required permissions.",
   "把 Object 地址和密钥配置到应用后端，使用 Authorization: Bearer 鉴权。":
@@ -244,10 +264,27 @@ export const core = {
     "Copy failed. Select and copy the value manually.",
   应用名称: "Application name",
   "例如 One Mail": "For example, One Mail",
-  有效天数: "Validity (days)",
+  有效期: "Validity",
+  三个月: "3 months",
+  一年: "1 year",
+  两年: "2 years",
+  自定义: "Custom",
+  不过期: "Never expires",
+  自定义到期时间: "Custom expiration",
+  桶与文件夹: "Buckets and folders",
+  "不选择时不限制桶；填写文件夹前缀可限制到指定目录。":
+    "Leave empty for all buckets; enter a folder prefix to limit access to a directory.",
+  文件夹前缀: "Folder prefix",
+  "文件夹前缀（可选）": "Folder prefix (optional)",
+  移除桶文件夹范围: "Remove bucket and folder scope",
+  添加桶文件夹范围: "Add bucket and folder scope",
+  "当前账号没有存储桶查看权限，Token 将不限制桶范围。":
+    "The current account cannot view buckets, so the Token will not be limited to a bucket.",
+  "负载均衡（多个桶之间分配上传）":
+    "Load balance uploads across multiple buckets",
+  "旧 Token 未保存": "Legacy Token was not saved",
   权限: "Permissions",
   创建密钥: "Create key",
-  密钥仅显示一次: "This key is shown only once",
   "保存到接入应用的服务端环境变量中。":
     "Save it in your application's server environment variables.",
   新建应用密钥: "New application key",
@@ -286,6 +323,7 @@ export const core = {
   新增厂商接入: "Add provider connection",
   "配置厂商账号，密钥直接保存。保存后可在桶管理中同步或创建存储桶。":
     "Configure a provider account. Credentials are stored directly. Then sync or create buckets in Buckets.",
+  我知道了: "Got it",
   存储厂商: "Storage provider",
   "默认区域（可选）": "Default region (optional)",
   "。默认区域用于请求签名，各桶可使用不同区域。":

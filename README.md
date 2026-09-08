@@ -6,7 +6,9 @@
 - TanStack Query 管理服务端状态；TanStack Table 管理文件表格。
 - React Hook Form / Zod 管理表单；Jotai 管理客户端 UI 与上传任务状态。
 - 路由按需加载；移动端侧栏使用 Sheet，宽表格保留横向滚动。
-- S3 凭证与应用密钥不写入浏览器持久存储。新密钥仅在创建后显示一次。
+- S3 凭证与应用密钥不写入浏览器持久存储。应用 Token 由服务端保存，并持续显示在授权列表中。
+- 授权管理配置应用名称、操作权限和桶，文件夹可选、留空默认 `one-object/`，新 Token 默认不过期。支持编辑、启用/停用、删除和轮换；轮换保留授权 ID、文件归属、范围和有效期，旧 Token 立即失效。移动端使用抽屉和合并列表，创建时间在一个月内显示相对时间，达到一个月后显示完整日期。
+- `/guide` 是独立公开 API 文档页，无需登录，不占用 `/docs`。示例使用当前站点地址，可下载自包含的 `SKILL.md`。账号菜单通过 `/api/auth/account` 跳转到后端配置的 One User 账号页。
 
 ```bash
 pnpm install
@@ -21,6 +23,8 @@ pnpm build
 完整接入约定见 [integrations/README.md](../integrations/README.md)。发布仍由 one-action 执行，不从这里直接部署。
 
 ## Web 环境配置
+
+多桶授权支持负载均衡和可选权重（1–1000）；空权重按 1，按文件名哈希分配，全部留空时均分。路径和权重均可不填。
 
 与 One Browser 一致，dev、stage、prod 分别使用 `.env.development`、`.env.stage`、`.env.production`。`pnpm dev` 加载 development，`pnpm build:stage` 加载 stage，`pnpm build` 加载 production。
 

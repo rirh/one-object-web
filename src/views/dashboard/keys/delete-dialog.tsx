@@ -11,33 +11,33 @@ import {
 } from "@/components/ui/responsive-dialog"
 import type { AppKey } from "./api"
 
-export function KeyRevokeDialog({
-  keyToRevoke,
+export function KeyDeleteDialog({
+  keyToDelete,
   pending,
   onConfirm,
   onOpenChange,
 }: {
-  keyToRevoke: AppKey | null
+  keyToDelete: AppKey | null
   pending: boolean
   onConfirm: () => void
   onOpenChange: (open: boolean) => void
 }) {
   const tx = useObjectTranslation()
   return (
-    <ResponsiveDialog
-      open={keyToRevoke !== null}
-      onOpenChange={onOpenChange}
-    >
-      <ResponsiveDialogContent className="sm:max-w-md" showCloseButton={!pending}>
+    <ResponsiveDialog open={keyToDelete !== null} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent
+        className="sm:max-w-md"
+        showCloseButton={!pending}
+      >
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>{tx("撤销授权")}</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>{tx("删除授权")}</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            {tx("撤销后该应用将立即停止访问，且不能恢复。")}
+            {tx(
+              "删除后 Token 永久失效，授权不可恢复。已上传文件保留，不会删除。",
+            )}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
-        <div className="px-4 py-3 text-sm font-medium">
-          {keyToRevoke?.name}
-        </div>
+        <div className="px-4 py-3 text-sm font-medium">{keyToDelete?.name}</div>
         <ResponsiveDialogFooter>
           <ResponsiveDialogClose asChild>
             <DialogActionButton
@@ -51,12 +51,12 @@ export function KeyRevokeDialog({
           </ResponsiveDialogClose>
           <DialogActionButton
             variant="destructive"
-            disabled={!keyToRevoke || pending}
+            disabled={!keyToDelete || pending}
             loading={pending}
-            loadingText={tx("撤销中…")}
+            loadingText={tx("删除中…")}
             onClick={onConfirm}
           >
-            {tx("确认撤销")}
+            {tx("确认删除")}
           </DialogActionButton>
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>

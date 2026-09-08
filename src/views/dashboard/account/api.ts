@@ -35,5 +35,9 @@ export const authUserQuery = {
         }
       : null
   },
+  staleTime: 0,
+  refetchOnMount: "always" as const,
+  refetchOnWindowFocus: "always" as const,
+  refetchOnReconnect: "always" as const,
   retry: false,
 }

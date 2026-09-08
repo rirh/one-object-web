@@ -146,10 +146,10 @@ export function SessionIdentity({ session }: { session: SessionQuery }) {
             {user ? (
               <>
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard/account">
+                  <a href="/api/auth/account">
                     <CircleUserRoundIcon />
                     {t("nav.account")}
-                  </Link>
+                  </a>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

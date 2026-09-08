@@ -98,6 +98,8 @@ type ResourceTableProps<TData, TFilter extends string = StatusFilter> = {
   showToolbar?: boolean
   fitContent?: boolean
   compact?: boolean
+  stackedToolbar?: boolean
+  toolbarActions?: React.ReactNode
 }
 
 export function ResourceTable<TData, TFilter extends string = StatusFilter>({
@@ -137,6 +139,8 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
   showToolbar = true,
   fitContent = false,
   compact = false,
+  stackedToolbar = false,
+  toolbarActions,
 }: ResourceTableProps<TData, TFilter>) {
   const { locale } = useTranslation()
   const zh = locale === "zh-CN"
@@ -343,7 +347,9 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
           statusFilter={statusFilter}
           statusFilterControl={statusFilterControl}
           statusFilterLabel={statusFilterLabel}
+          stackedToolbar={stackedToolbar}
           table={table}
+          toolbarActions={toolbarActions}
           zh={zh}
         />
       ) : null}

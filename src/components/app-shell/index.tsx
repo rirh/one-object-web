@@ -88,7 +88,8 @@ export function AppShell() {
     location.pathname === "/dashboard/buckets" ||
     location.pathname.startsWith("/dashboard/buckets/") ||
     location.pathname === "/dashboard/files" ||
-    location.pathname.startsWith("/dashboard/files/")
+    location.pathname.startsWith("/dashboard/files/") ||
+    location.pathname === "/dashboard/authorizations"
   useEffect(() => {
     if (!activeNavigation) {
       return

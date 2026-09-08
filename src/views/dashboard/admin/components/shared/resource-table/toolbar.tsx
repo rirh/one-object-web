@@ -59,7 +59,9 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
   statusFilter,
   statusFilterControl,
   statusFilterLabel,
+  stackedToolbar,
   table,
+  toolbarActions,
   zh,
 }: {
   allRowsExpanded: boolean
@@ -79,137 +81,164 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
   statusFilter: TFilter
   statusFilterControl: "segmented" | "select"
   statusFilterLabel?: string
+  stackedToolbar: boolean
   table: TanStackTable<TData>
+  toolbarActions?: ReactNode
   zh: boolean
 }) {
-  return (
-    <div
-      className={cn(
-        "flex shrink-0 flex-col gap-2 border-b bg-muted/40 px-3 sm:flex-row sm:items-center sm:justify-between lg:px-4",
-        compact ? "py-2" : "py-3",
-      )}
-    >
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-        {filterOptions.length > 0 ? (
-          statusFilterControl === "select" ? (
-            <Select
-              onValueChange={(value) => onStatusFilterChange(value as TFilter)}
-              value={statusFilter}
-            >
-              <SelectTrigger
-                aria-label={
-                  statusFilterLabel ?? (zh ? "状态筛选" : "Status filter")
-                }
-                className="w-32"
-                size="sm"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {filterOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          ) : (
-            <AnimatedSegmentedTabs
-              label={statusFilterLabel ?? (zh ? "状态筛选" : "Status filter")}
-              value={statusFilter}
-              onValueChange={onStatusFilterChange}
-              options={filterOptions}
-            />
-          )
-        ) : null}
-        <InputGroup className="w-full max-w-sm sm:w-80">
-          <InputGroupAddon>
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            aria-label={searchPlaceholder}
-            placeholder={searchPlaceholder}
-            value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
-        </InputGroup>
-      </div>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+  const filterControl =
+    filterOptions.length > 0 ? (
+      statusFilterControl === "select" ? (
+        <Select
+          onValueChange={(value) => onStatusFilterChange(value as TFilter)}
+          value={statusFilter}
+        >
+          <SelectTrigger
+            aria-label={
+              statusFilterLabel ?? (zh ? "状态筛选" : "Status filter")
+            }
+            className="w-32"
+            size="sm"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {filterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      ) : (
+        <AnimatedSegmentedTabs
+          label={statusFilterLabel ?? (zh ? "状态筛选" : "Status filter")}
+          value={statusFilter}
+          onValueChange={onStatusFilterChange}
+          options={filterOptions}
+        />
+      )
+    ) : null
+  const searchControl = (
+    <InputGroup className="w-full max-w-sm sm:w-80">
+      <InputGroupAddon>
+        <SearchIcon />
+      </InputGroupAddon>
+      <InputGroupInput
+        aria-label={searchPlaceholder}
+        placeholder={searchPlaceholder}
+        value={searchValue}
+        onChange={(event) => onSearchChange(event.target.value)}
+      />
+    </InputGroup>
+  )
+  const toolbarControls = (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={isFetching}
+        onClick={onRefresh}
+      >
+        <RefreshCwIcon
+          data-icon="inline-start"
+          className={cn(isFetching && "animate-spin")}
+          onAnimationIteration={onRefreshAnimationIteration}
+        />
+        {zh ? "刷新" : "Refresh"}
+      </Button>
+      {onCreate ? (
+        <Button type="button" size="sm" onClick={onCreate}>
+          <PlusIcon data-icon="inline-start" />
+          {createLabel ?? (zh ? "新增" : "Create")}
+        </Button>
+      ) : null}
+      {hasExpandableRows ? (
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={isFetching}
-          onClick={onRefresh}
+          onClick={onToggleExpanded}
         >
-          <RefreshCwIcon
-            data-icon="inline-start"
-            className={cn(isFetching && "animate-spin")}
-            onAnimationIteration={onRefreshAnimationIteration}
-          />
-          {zh ? "刷新" : "Refresh"}
+          {allRowsExpanded ? (
+            <ListCollapseIcon data-icon="inline-start" />
+          ) : (
+            <ListTreeIcon data-icon="inline-start" />
+          )}
+          {allRowsExpanded
+            ? zh
+              ? "全部收起"
+              : "Collapse all"
+            : zh
+              ? "全部展开"
+              : "Expand all"}
         </Button>
-        {onCreate ? (
-          <Button type="button" size="sm" onClick={onCreate}>
-            <PlusIcon data-icon="inline-start" />
-            {createLabel ?? (zh ? "新增" : "Create")}
+      ) : null}
+      {toolbarActions}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="outline" size="sm">
+            <SlidersHorizontalIcon data-icon="inline-start" />
+            {zh ? "列" : "Columns"}
+            <ChevronDownIcon data-icon="inline-end" />
           </Button>
-        ) : null}
-        {hasExpandableRows ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onToggleExpanded}
-          >
-            {allRowsExpanded ? (
-              <ListCollapseIcon data-icon="inline-start" />
-            ) : (
-              <ListTreeIcon data-icon="inline-start" />
-            )}
-            {allRowsExpanded
-              ? zh
-                ? "全部收起"
-                : "Collapse all"
-              : zh
-                ? "全部展开"
-                : "Expand all"}
-          </Button>
-        ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <SlidersHorizontalIcon data-icon="inline-start" />
-              {zh ? "列" : "Columns"}
-              <ChevronDownIcon data-icon="inline-end" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                {zh ? "显示列" : "Show columns"}
-              </DropdownMenuLabel>
-              {table
-                .getAllLeafColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onSelect={(event) => event.preventDefault()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(Boolean(value))
-                    }
-                  >
-                    {getColumnMeta(column).label ?? column.id}
-                  </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              {zh ? "显示列" : "Show columns"}
+            </DropdownMenuLabel>
+            {table
+              .getAllLeafColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.id}
+                  checked={column.getIsVisible()}
+                  onSelect={(event) => event.preventDefault()}
+                  onCheckedChange={(value) =>
+                    column.toggleVisibility(Boolean(value))
+                  }
+                >
+                  {getColumnMeta(column).label ?? column.id}
+                </DropdownMenuCheckboxItem>
+              ))}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 gap-2 border-b bg-muted/40 px-3 lg:px-4",
+        stackedToolbar
+          ? "flex-col"
+          : "flex-col sm:flex-row sm:items-center sm:justify-between",
+        compact ? "py-2" : "py-3",
+      )}
+    >
+      {stackedToolbar ? (
+        <>
+          <div className="min-w-0 overflow-x-auto">{filterControl}</div>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            {searchControl}
+            {toolbarControls}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            {filterControl}
+            {searchControl}
+          </div>
+          {toolbarControls}
+        </>
+      )}
     </div>
   )
 }

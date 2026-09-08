@@ -17,7 +17,7 @@ const Files = lazy(() => import("@/views/dashboard/files"))
 const Keys = lazy(() => import("@/views/dashboard/keys"))
 const Buckets = lazy(() => import("@/views/dashboard/buckets"))
 const Storage = lazy(() => import("@/views/dashboard/storage"))
-const Integration = lazy(() => import("@/views/dashboard/integration"))
+const ApiGuide = lazy(() => import("@/views/api-guide"))
 function RequirePermission({ code }: { code: string }) {
   const tx = useObjectTranslation()
 
@@ -30,7 +30,7 @@ function RequirePermission({ code }: { code: string }) {
     <Failure error={new Error(tx("没有此页面的访问权限"))} />
   )
 }
-export function App() {
+function AuthenticatedApp() {
   const account = useQuery(authUserQuery)
   if (account.isPending)
     return (
@@ -87,7 +87,6 @@ export function App() {
               <Route path=":id" element={<Buckets />} />
             </Route>
           </Route>
-          <Route path="integration" element={<Integration />} />
         </Route>
         {[
           "files",
@@ -96,7 +95,6 @@ export function App() {
           "authorizations",
           "storage",
           "buckets",
-          "integration",
         ].map((path) => (
           <Route
             key={path}
@@ -105,6 +103,17 @@ export function App() {
           />
         ))}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Suspense>
+  )
+}
+
+export function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Routes>
+        <Route path="guide" element={<ApiGuide />} />
+        <Route path="*" element={<AuthenticatedApp />} />
       </Routes>
     </Suspense>
   )

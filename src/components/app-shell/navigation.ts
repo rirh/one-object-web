@@ -2,12 +2,12 @@ import {
   Building2Icon,
   CircleUserRoundIcon,
   ClipboardListIcon,
-  Code2Icon,
   DatabaseIcon,
   FilesIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
   LogInIcon,
+  ShieldCheckIcon,
   UsersRoundIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -38,14 +38,13 @@ const localNavigation: Record<string, { icon: LucideIcon; id: string }> = {
   "/dashboard/authorizations": { icon: KeyRoundIcon, id: "authorizations" },
   "/dashboard/buckets": { icon: DatabaseIcon, id: "buckets" },
   "/dashboard/storage": { icon: Building2Icon, id: "storage" },
-  "/dashboard/integration": { icon: Code2Icon, id: "integration" },
   "/dashboard/admin?section=users": { icon: UsersRoundIcon, id: "admin-users" },
   "/dashboard/admin?section=roles": {
     icon: CircleUserRoundIcon,
     id: "admin-roles",
   },
   "/dashboard/admin?section=permissions": {
-    icon: KeyRoundIcon,
+    icon: ShieldCheckIcon,
     id: "admin-permissions",
   },
   "/dashboard/admin?section=login-events": {
@@ -94,7 +93,8 @@ function navigationItems(
       href: route.path,
       icon:
         (route.meta.icon !== "#" &&
-        !(local.id === "storage" && route.meta.icon === "database")
+        !(local.id === "storage" && route.meta.icon === "database") &&
+        !(local.id === "admin-permissions" && route.meta.icon === "key-round")
           ? findMenuIconOption(route.meta.icon)?.Icon
           : undefined) ?? local.icon,
       id: local.id,

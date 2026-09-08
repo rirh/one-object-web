@@ -30,7 +30,7 @@ export function ServiceStatusCard({
       : t("status.unavailable")
 
   return (
-    <div className="flex min-h-12 items-center justify-between gap-4 rounded-lg border bg-card px-3.5 py-2.5">
+    <div className="flex min-h-12 items-center justify-between gap-4 rounded-lg bg-card px-3.5 py-2.5 shadow-none">
       <h3 className="truncate text-sm font-medium">{t(titleKey)}</h3>
 
       <Tooltip>

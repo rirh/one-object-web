@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       hmr: { host: "127.0.0.1", clientPort: 27526 },
       proxy: {
-        "/api": { target: backendUrl, changeOrigin: true },
+        "^/api(?:/|$)": { target: backendUrl, changeOrigin: true },
         "/callback": { target: backendUrl, changeOrigin: true },
         "/healthz": { target: backendUrl, changeOrigin: true },
         "/readyz": { target: backendUrl, changeOrigin: true },
