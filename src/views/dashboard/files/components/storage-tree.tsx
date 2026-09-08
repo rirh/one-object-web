@@ -98,14 +98,14 @@ function StorageTreeContent({
 
   return (
     <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-b bg-background md:h-auto md:w-60 md:border-r md:border-b-0 lg:w-64">
-      <div className="flex h-11 md:h-10 shrink-0 items-center justify-between border-b px-3 py-1">
+      <div className="flex h-9 shrink-0 items-center justify-between border-b px-2 py-0.5 md:h-10 md:px-3 md:py-1">
         <h1 className="truncate text-sm font-semibold">{tx("文件目录")}</h1>
         <span className="text-xs tabular-nums text-muted-foreground">
           {accounts.length}
           {tx("个账户")}
         </span>
       </div>
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b px-3 py-2">
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b px-2 py-1 md:h-14 md:gap-2 md:px-3 md:py-2">
         <div className="relative min-w-0 flex-1">
           <SearchIcon
             aria-hidden="true"
@@ -113,7 +113,7 @@ function StorageTreeContent({
           />
           <Input
             aria-label={tx("搜索账户或存储桶")}
-            className="pl-8 md:h-8"
+            className="h-7 !min-h-0 pl-7 text-sm md:h-8 md:pl-8"
             placeholder={tx("搜索账户或存储桶")}
             value={search}
             onChange={(event) => {
@@ -124,7 +124,7 @@ function StorageTreeContent({
         </div>
         <Button
           variant="outline"
-          size="icon"
+          size="icon-sm"
           className="md:size-8"
           aria-label={tx("刷新存储桶")}
           title={tx("刷新存储桶")}
@@ -142,9 +142,9 @@ function StorageTreeContent({
       </div>
       <nav
         aria-label={tx("文件目录")}
-        className="min-h-0 flex-1 overflow-y-auto p-2"
+        className="min-h-0 flex-1 overflow-y-auto p-1.5"
       >
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0.5">
           {visibleGroups.map((group) => {
             const expanded = collapsed[group.id] !== true
             const groupKey = group.id
@@ -152,7 +152,7 @@ function StorageTreeContent({
               <div key={groupKey}>
                 <button
                   aria-expanded={expanded}
-                  className="flex h-11 w-full md:h-8 items-center gap-1.5 rounded-lg px-2 text-left text-sm font-medium hover:bg-muted"
+                  className="flex h-8 w-full items-center gap-1 rounded-md px-1.5 text-left text-[13px] font-medium hover:bg-muted md:h-7"
                   type="button"
                   onClick={() =>
                     setCollapsed((current) => ({
@@ -176,7 +176,7 @@ function StorageTreeContent({
                     src={`/storage-providers/${group.provider}.svg`}
                     alt=""
                     aria-hidden="true"
-                    className="size-5 shrink-0 object-contain"
+                    className="size-4 shrink-0 object-contain"
                   />
                   <span className="min-w-0 flex-1 truncate">{group.name}</span>
                   <span className="text-xs tabular-nums text-muted-foreground">
@@ -184,14 +184,14 @@ function StorageTreeContent({
                   </span>
                 </button>
                 {expanded && (
-                  <div className="ml-5 border-l border-border/70 pl-1.5">
+                  <div className="ml-4 border-l border-border/70 pl-1">
                     {group.connections.map((connection) => {
                       const selected = connection.id === selectedStorageId
                       return (
                         <button
                           aria-current={selected ? "page" : undefined}
                           className={cn(
-                            "flex h-11 w-full md:h-8 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted",
+                            "flex h-7 w-full items-center gap-1.5 rounded-md px-1.5 text-left hover:bg-muted md:h-6",
                             selected && "bg-accent text-accent-foreground",
                             !connection.enabled && "opacity-60",
                           )}
@@ -205,7 +205,7 @@ function StorageTreeContent({
                           />
                           <NameTooltip
                             name={connection.bucket}
-                            className="flex-1 text-sm"
+                            className="flex-1 text-[13px]"
                           />
                         </button>
                       )
@@ -261,9 +261,13 @@ export function StorageTree(props: StorageTreeProps) {
   if (!isMobile) return <StorageTreeContent {...props} />
   return (
     <ResponsiveDialog open={open} onOpenChange={setOpen}>
-      <div className="shrink-0 border-b px-3 py-2">
+      <div className="shrink-0 border-b px-2 py-1 md:px-3 md:py-2">
         <ResponsiveDialogTrigger asChild>
-          <Button variant="outline" className="w-full justify-start">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 w-full justify-start px-2"
+          >
             <DatabaseIcon />
             {tx("文件目录")}
             <span className="min-w-0 flex-1 truncate text-right text-muted-foreground">

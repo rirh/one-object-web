@@ -432,7 +432,8 @@ export function ResourceTable<TData, TFilter extends string = StatusFilter>({
                             key={cell.id}
                             className={meta.cellClassName}
                             onClick={
-                              cell.column.id === "actions"
+                              cell.column.id === "actions" ||
+                              cell.column.id === "select"
                                 ? (event) => event.stopPropagation()
                                 : undefined
                             }

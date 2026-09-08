@@ -1,3 +1,4 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
 import { useLocalAtom } from "@/hooks/use-local-atom"
 
 import { useObjectTranslation } from "@/local/object"
@@ -7,8 +8,6 @@ import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { SweepShine } from "@/components/sweep-shine"
-
-import { Button } from "@/components/ui/button"
 
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 
@@ -39,7 +38,7 @@ export function BucketDialog({
   defaultRegion: string
   value: "new" | Bucket
   close: () => void
-  saved: () => void
+  saved: () => Promise<void>
 }) {
   const tx = useObjectTranslation()
 
@@ -51,9 +50,9 @@ export function BucketDialog({
       if (creating) await createBucket(accountId, name.trim(), region.trim())
       else await deleteBucket(accountId, value.bucket, name)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(creating ? tx("云端存储桶已创建") : tx("云端存储桶已删除"))
-      saved()
+      await saved()
       close()
     },
     onError: (error) => toast.error(tx(error.message)),
@@ -131,15 +130,16 @@ export function BucketDialog({
             </Field>
           </ResponsiveDialogBody>
           <ResponsiveDialogFooter>
-            <Button
+            <DialogActionButton
+              action="cancel"
               type="button"
               variant="outline"
               disabled={mutation.isPending}
               onClick={close}
             >
               {tx("取消")}
-            </Button>
-            <Button
+            </DialogActionButton>
+            <DialogActionButton
               type="submit"
               variant={creating ? "default" : "destructive"}
               disabled={
@@ -151,7 +151,7 @@ export function BucketDialog({
               <SweepShine active={mutation.isPending}>
                 {creating ? tx("创建") : tx("确认删除云端桶")}
               </SweepShine>
-            </Button>
+            </DialogActionButton>
           </ResponsiveDialogFooter>
         </form>
       </ResponsiveDialogContent>

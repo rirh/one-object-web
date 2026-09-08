@@ -72,7 +72,11 @@ export function App() {
             />
           </Route>
           <Route element={<RequirePermission code="object:keys:list" />}>
-            <Route path="keys" element={<Keys />} />
+            <Route path="authorizations" element={<Keys />} />
+            <Route
+              path="keys"
+              element={<Navigate replace to="/dashboard/authorizations" />}
+            />
           </Route>
           <Route element={<RequirePermission code="object:storage:read" />}>
             <Route path="storage" element={<Storage />} />
@@ -85,15 +89,21 @@ export function App() {
           </Route>
           <Route path="integration" element={<Integration />} />
         </Route>
-        {["files", "uploads", "keys", "storage", "buckets", "integration"].map(
-          (path) => (
-            <Route
-              key={path}
-              path={path}
-              element={<Navigate replace to={`/dashboard/${path}`} />}
-            />
-          ),
-        )}
+        {[
+          "files",
+          "uploads",
+          "keys",
+          "authorizations",
+          "storage",
+          "buckets",
+          "integration",
+        ].map((path) => (
+          <Route
+            key={path}
+            path={path}
+            element={<Navigate replace to={`/dashboard/${path}`} />}
+          />
+        ))}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>

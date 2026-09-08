@@ -1,8 +1,7 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
 import { useObjectTranslation } from "@/local/object"
 
 import { SweepShine } from "@/components/sweep-shine"
-
-import { Button } from "@/components/ui/button"
 
 import {
   ResponsiveDialog,
@@ -52,16 +51,22 @@ export function BucketBulkDeleteDialog({
           </ul>
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
-          <Button
+          <DialogActionButton
+            action="cancel"
+            type="button"
             variant="outline"
             disabled={deleting}
             onClick={() => onOpenChange(false)}
           >
             {tx("取消")}
-          </Button>
-          <Button variant="destructive" disabled={deleting} onClick={onConfirm}>
+          </DialogActionButton>
+          <DialogActionButton
+            variant="destructive"
+            disabled={deleting}
+            onClick={onConfirm}
+          >
             <SweepShine active={deleting}>{tx("确认删除")}</SweepShine>
-          </Button>
+          </DialogActionButton>
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>

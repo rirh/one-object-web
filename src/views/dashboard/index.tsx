@@ -19,15 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { bytes, date } from "@/lib/format"
+import { RecentFiles } from "./components/recent-files"
 import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
 import { listFiles } from "@/views/dashboard/files/api"
 import { listAccounts, listConnections } from "@/views/dashboard/storage/api"
@@ -172,35 +164,7 @@ export default function Dashboard() {
                 description={tx("上传文件后，会在这里显示。")}
               />
             ) : (
-              <Table className="min-w-[28rem]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{tx("文件名")}</TableHead>
-                    <TableHead>{tx("大小")}</TableHead>
-                    <TableHead>{tx("上传时间")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {files.data.items.slice(0, 6).map((file) => (
-                    <TableRow key={file.id}>
-                      <TableCell>
-                        <span
-                          className="block max-w-64 truncate"
-                          title={file.original_filename}
-                        >
-                          {file.original_filename}
-                        </span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {bytes(file.file_size)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {date(file.created_at)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <RecentFiles files={files.data.items.slice(0, 6)} />
             )}
           </CardContent>
         </Card>

@@ -1,8 +1,7 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
 import { useObjectTranslation } from "@/local/object"
 
 import { SweepShine } from "@/components/sweep-shine"
-
-import { Button } from "@/components/ui/button"
 
 import {
   ResponsiveDialog,
@@ -58,7 +57,9 @@ export function BucketDisableDialog({
           )}
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
-          <Button
+          <DialogActionButton
+            action="cancel"
+            type="button"
             variant="outline"
             disabled={pending}
             onClick={() => {
@@ -66,8 +67,8 @@ export function BucketDisableDialog({
             }}
           >
             {tx("取消")}
-          </Button>
-          <Button
+          </DialogActionButton>
+          <DialogActionButton
             variant="destructive"
             disabled={!bucket || pending}
             aria-busy={pending}
@@ -76,7 +77,7 @@ export function BucketDisableDialog({
             }}
           >
             <SweepShine active={pending}>{tx("确认停用")}</SweepShine>
-          </Button>
+          </DialogActionButton>
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>

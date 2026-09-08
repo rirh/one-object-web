@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest"
 import {
+  fileLocationHref,
   filePath,
   filePrefix,
   readFileLocation,
@@ -49,4 +50,22 @@ it("ignores invalid storage and unavailable localStorage", () => {
   ).not.toThrow()
   vi.stubGlobal("localStorage", { getItem: () => "bad json" })
   expect(readFileLocation("a")).toBeNull()
+})
+
+it("locates an exact object inside its containing folder without losing URL characters", () => {
+  for (const key of [
+    "report.txt",
+    "one-object/sha256-abc/report.txt",
+    "报告 #1/a+b%?.txt",
+  ]) {
+    const url = new URL(
+      fileLocationHref("connection-onefile", key),
+      "http://localhost",
+    )
+    expect(filePrefix(url.pathname)).toBe(
+      key.slice(0, key.lastIndexOf("/") + 1),
+    )
+    expect(url.searchParams.get("focus")).toBe(key)
+    expect(url.searchParams.get("view")).toBe("folders")
+  }
 })

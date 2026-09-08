@@ -448,8 +448,8 @@
 
   @media (max-width: 767px) {
     .tags-view-chrome {
-      --tags-bar-height: 40px;
-      --tags-tab-height: 38px;
+      --tags-bar-height: 34px;
+      --tags-tab-height: 32px;
     }
 
     .tags-view-chrome__item {
@@ -472,26 +472,20 @@
   }
 }
 
-/* Keep compact desktop controls comfortable to use on narrow touch screens. */
+/* Keep mobile menus usable while allowing file-management controls to stay compact. */
 @media (max-width: 767px) {
-  [data-slot="button"],
-  [data-slot="select-trigger"],
   [data-slot="dropdown-menu-item"],
   [data-slot="dropdown-menu-checkbox-item"],
-  [data-slot="dropdown-menu-radio-item"],
-  [data-slot="select-item"] {
+  [data-slot="dropdown-menu-radio-item"] {
     min-height: 2.75rem;
-  }
-  [data-slot="button"][data-size^="icon"] {
-    min-width: 2.75rem;
   }
   [data-slot="input"],
   [data-slot="textarea"] {
-    min-height: 2.75rem;
-    font-size: 1rem;
+    min-height: 2.25rem;
+    font-size: 0.875rem;
   }
   .tags-view-chrome__label,
   .tags-view-chrome__close {
-    min-height: 2.75rem;
+    min-height: 2rem;
   }
 }

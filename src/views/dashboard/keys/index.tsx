@@ -87,6 +87,11 @@ export default function KeysPage() {
   })
   return (
     <div className="flex flex-col gap-6">
+      <p className="text-sm text-muted-foreground">
+        {tx(
+          "为其他应用生成访问 Token，按需授予上传、读取和删除权限。Token 仅显示一次，请保存到应用后端。",
+        )}
+      </p>
       {permissions.includes("object:keys:create") && (
         <form
           className="max-w-xl"
@@ -97,7 +102,7 @@ export default function KeysPage() {
               <FieldLabel htmlFor="app-name">{tx("应用名称")}</FieldLabel>
               <Input
                 id="app-name"
-                placeholder={tx("例如 One Mail")}
+                placeholder={tx("例如 One User 头像服务")}
                 aria-invalid={!!form.formState.errors.name}
                 {...form.register("name")}
               />
@@ -155,7 +160,7 @@ export default function KeysPage() {
               aria-busy={create.isPending}
             >
               <SweepShine active={create.isPending}>
-                {tx("创建密钥")}
+                {tx("创建授权")}
               </SweepShine>
             </Button>
           </FieldGroup>
@@ -191,7 +196,7 @@ export default function KeysPage() {
           </AlertDescription>
         </Alert>
       ) : null}
-      <h2 className="text-base font-medium">{tx("已有密钥")}</h2>
+      <h2 className="text-base font-medium">{tx("已授权应用")}</h2>
       {query.isPending ? (
         <Loading />
       ) : query.error ? (
@@ -252,7 +257,7 @@ export default function KeysPage() {
         </ul>
       ) : (
         <NoItems
-          title={tx("暂无应用密钥")}
+          title={tx("暂无应用授权")}
           description={tx("创建密钥后，其他应用即可接入统一上传。")}
         />
       )}

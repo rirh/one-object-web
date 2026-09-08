@@ -1,9 +1,11 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table"
 import { objectColumns } from "./object-columns"
+import { NameTooltip } from "./name-tooltip"
 import { useLocalAtom } from "@/hooks/use-local-atom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -37,6 +39,7 @@ import {
 import { type StorageObjectEntry } from "../api"
 
 type ObjectDirectoryProps = {
+  focusedKey?: string
   storageId: string
   canDelete: boolean
   items: StorageObjectEntry[]
@@ -45,16 +48,17 @@ type ObjectDirectoryProps = {
 }
 
 const columnClasses: Record<string, string> = {
-  selection: "w-9 pl-3 pr-0 text-left",
+  selection: "w-8 pl-2 pr-0 text-left md:w-9 md:pl-3",
   name: "pl-1",
-  kind: "w-24 text-muted-foreground",
-  size: "w-24 text-right tabular-nums",
-  modified: "w-44 text-xs text-muted-foreground",
-  actions: "sticky right-0 w-12 bg-background p-1 text-center",
+  kind: "w-20 text-muted-foreground md:w-24",
+  size: "w-20 text-right tabular-nums md:w-24",
+  modified: "w-36 text-xs text-muted-foreground md:w-44",
+  actions: "sticky right-0 w-10 bg-background p-1 text-center md:w-12",
 }
 
 export function ObjectDirectory({
   items,
+  focusedKey,
   storageId,
   canDelete,
   view,
@@ -126,7 +130,7 @@ export function ObjectDirectory({
   if (!items.length)
     return (
       <NoItems
-        title={tx("暂无对象")}
+        title={tx(focusedKey ? "文件不存在或已被删除" : "暂无对象")}
         description={tx("此对象前缀下没有内容，请调整搜索或返回上级目录。")}
       />
     )
@@ -191,30 +195,34 @@ export function ObjectDirectory({
           <ResponsiveDialogHeader>
             <ResponsiveDialogTitle>{tx("批量删除文件")}</ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
-              {tx(
-                "确定删除选中的 {0} 个文件吗？将删除云端对象，此操作无法在本应用中撤销。",
-                { 0: confirmKeys?.length ?? 0 },
-              )}
+              {tx("删除 {0} 个文件，此操作不可撤销。", {
+                0: confirmKeys?.length ?? 0,
+              })}
             </ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
           <ResponsiveDialogBody>
             <ul className="max-h-48 overflow-auto text-sm">
               {confirmKeys?.map((key) => (
-                <li key={key} className="break-all">
-                  {key}
+                <li key={key}>
+                  <NameTooltip
+                    name={key}
+                    label={key.split("/").at(-1) || key}
+                  />
                 </li>
               ))}
             </ul>
           </ResponsiveDialogBody>
           <ResponsiveDialogFooter>
-            <Button
+            <DialogActionButton
+              action="cancel"
+              type="button"
               variant="outline"
               disabled={deleting.isPending}
               onClick={() => setConfirmKeys(null)}
             >
               {tx("取消")}
-            </Button>
-            <Button
+            </DialogActionButton>
+            <DialogActionButton
               variant="destructive"
               disabled={deleting.isPending || !confirmKeys?.length}
               onClick={() => {
@@ -222,7 +230,7 @@ export function ObjectDirectory({
               }}
             >
               {tx(deleting.isPending ? "正在删除…" : "确认删除")}
-            </Button>
+            </DialogActionButton>
           </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
       </ResponsiveDialog>
@@ -237,7 +245,7 @@ export function ObjectDirectory({
       <div
         className={`min-h-0 flex-1 overflow-auto ${selectedKeys.length ? "pb-24" : ""}`}
       >
-        <Table className="min-w-[40rem] table-fixed md:[&_th]:h-8 md:[&_td]:py-0.5">
+        <Table className="min-w-[36rem] table-fixed [&_th]:h-8 [&_td]:py-0.5 md:min-w-[40rem]">
           <TableHeader>
             {table.getHeaderGroups().map((group) => (
               <TableRow
@@ -262,6 +270,9 @@ export function ObjectDirectory({
             {table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
+                className={
+                  row.original.key === focusedKey ? "bg-accent" : undefined
+                }
                 data-state={
                   selectedKeys.includes(row.original.key)
                     ? "selected"

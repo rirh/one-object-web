@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { buildNavigationGroups } from "@/components/app-shell/navigation"
 import {
   groupDashboardRoutes,
   type AuthPermissionRoute,
@@ -68,3 +69,34 @@ describe("dashboard menu groups", () => {
     })
   })
 })
+
+it.each(["/keys", "/dashboard/keys", "/authorizations"])(
+  "shows the authorization menu for %s",
+  (path) => {
+    const routes = groupDashboardRoutes([
+      { ...page("2005", path), meta: { title: "授权管理", icon: "key-round" } },
+    ])
+    const groups = buildNavigationGroups({
+      user_id: "100",
+      super_admin: false,
+      permissions: ["object:keys:list"],
+      roles: [],
+      buttons: [],
+      routes,
+    })
+    expect(groups[0].items[0]).toMatchObject({
+      href: "/dashboard/authorizations",
+      label: "授权管理",
+    })
+    expect(
+      buildNavigationGroups({
+        user_id: "100",
+        super_admin: false,
+        permissions: [],
+        roles: [],
+        buttons: [],
+        routes: [],
+      }),
+    ).toEqual([])
+  },
+)

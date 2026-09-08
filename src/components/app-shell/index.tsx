@@ -183,9 +183,9 @@ export function AppShell() {
       </Sidebar>
 
       <SidebarInset className="h-svh min-h-0 overflow-hidden bg-muted md:h-[calc(100svh-1rem)]">
-        <header className="flex h-11 shrink-0 items-center overflow-visible border-b bg-muted transition-[width,height] ease-linear md:h-(--header-height) group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+        <header className="flex h-10 shrink-0 items-center overflow-visible border-b bg-muted transition-[width,height] ease-linear md:h-(--header-height) group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
           <div className="flex h-full w-full min-w-0 items-center overflow-visible px-3 lg:px-4">
-            <SidebarTrigger className="mr-2 -ml-1 size-9 md:size-8" />
+            <SidebarTrigger className="mr-2 -ml-1 size-8 md:size-8" />
             <div
               className="h-full w-px shrink-0 bg-border"
               aria-hidden="true"

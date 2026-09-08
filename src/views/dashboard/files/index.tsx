@@ -4,7 +4,7 @@ import {
   readFileLocation,
   saveFileLocation,
 } from "./location"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   Navigate,
@@ -70,6 +70,8 @@ export default function FilesPage() {
       : savedAvailable
         ? saved.prefix
         : ""
+  const requestedFocus = params.get("focus") || ""
+  const focusedKey = requestedFocus.startsWith(prefix) ? requestedFocus : ""
   const selectedConnection = connections.data?.items.find(
     (item) => item.id === storageId,
   )
@@ -87,7 +89,7 @@ export default function FilesPage() {
     view,
   ])
   const form = useForm({ values: { prefix } })
-  const browseKey = `${storageId}\u0000${prefix}\u0000${view}`
+  const browseKey = `${storageId}\u0000${prefix}\u0000${view}\u0000${focusedKey}`
   const [storagePage, setStoragePage] = useState<{
     key: string
     cursor: string
@@ -101,14 +103,21 @@ export default function FilesPage() {
     [browseKey, storagePage],
   )
   const objects = useQuery({
-    queryKey: ["storage-objects", storageId, prefix, view, currentPage.cursor],
+    queryKey: [
+      "storage-objects",
+      storageId,
+      prefix,
+      view,
+      currentPage.cursor,
+      focusedKey,
+    ],
     queryFn: ({ signal }) =>
       listStorageObjects(
         storageId,
-        prefix,
+        focusedKey || prefix,
         currentPage.cursor || undefined,
         signal,
-        view === "files",
+        !!focusedKey || view === "files",
       ),
     enabled: !!selectedConnection,
   })
@@ -131,34 +140,32 @@ export default function FilesPage() {
     onError: (error) =>
       toast.error(tx("存储桶列表刷新失败"), { description: tx(error.message) }),
   })
-  const updateParams = useCallback(
-    (updates: Record<string, string>) => {
-      const next = new URLSearchParams(params)
-      next.delete("storage")
-      next.delete("prefix")
-      next.delete("search")
-      next.delete("offset")
-      for (const [key, value] of Object.entries(updates)) {
-        if (key === "prefix") continue
-        if (value) next.set(key, value)
-        else next.delete(key)
-      }
-      next.set(
-        "view",
-        updates.view === "files"
-          ? "files"
-          : updates.view === "folders"
-            ? "folders"
-            : view,
-      )
-      setStoragePage({ key: "", cursor: "", history: [] })
-      navigate({
-        pathname: filePath(storageId, updates.prefix ?? prefix),
-        search: `?${next}`,
-      })
-    },
-    [params, navigate, storageId, prefix, view],
-  )
+  const updateParams = (updates: Record<string, string>) => {
+    const next = new URLSearchParams(params)
+    next.delete("storage")
+    next.delete("prefix")
+    next.delete("focus")
+    next.delete("search")
+    next.delete("offset")
+    for (const [key, value] of Object.entries(updates)) {
+      if (key === "prefix") continue
+      if (value) next.set(key, value)
+      else next.delete(key)
+    }
+    next.set(
+      "view",
+      updates.view === "files"
+        ? "files"
+        : updates.view === "folders"
+          ? "folders"
+          : view,
+    )
+    setStoragePage({ key: "", cursor: "", history: [] })
+    navigate({
+      pathname: filePath(storageId, updates.prefix ?? prefix),
+      search: `?${next}`,
+    })
+  }
   const openStorage = (nextId: string) => {
     if (nextId === storageId) return
     const next = new URLSearchParams({ view })
@@ -205,7 +212,7 @@ export default function FilesPage() {
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:flex-row">
+    <section className="files-page flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:flex-row">
       <StorageTree
         accounts={accounts.data.items}
         connections={connections.data.items}
@@ -218,7 +225,7 @@ export default function FilesPage() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {selectedConnection ? (
           <>
-            <header className="flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-1 md:h-10 md:min-h-10 md:flex-nowrap">
+            <header className="flex h-9 min-h-9 shrink-0 flex-nowrap items-center gap-1 border-b px-2 py-0.5 md:h-10 md:min-h-10 md:gap-2 md:px-3 md:py-1">
               <PathBar
                 bucket={selectedConnection.bucket}
                 prefix={prefix}
@@ -243,7 +250,7 @@ export default function FilesPage() {
                   />
                 )}
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   className="md:size-8"
                   variant="outline"
                   aria-label={tx("刷新")}
@@ -263,9 +270,9 @@ export default function FilesPage() {
                 </Button>
               </div>
             </header>
-            <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-muted/20 px-3 py-2 md:h-14 md:flex-nowrap">
+            <div className="flex min-h-0 shrink-0 flex-wrap items-center justify-between gap-1 border-b bg-muted/20 px-2 py-1 md:h-14 md:flex-nowrap md:gap-2 md:px-3 md:py-2">
               <form
-                className="flex w-full min-w-0 items-center gap-2 md:w-auto md:flex-1 md:max-w-md"
+                className="flex w-full min-w-0 items-center gap-1 md:w-auto md:max-w-md md:flex-1 md:gap-2"
                 onSubmit={form.handleSubmit(({ prefix: value }) =>
                   openFolder(value),
                 )}
@@ -274,12 +281,13 @@ export default function FilesPage() {
                   aria-label={tx("按前缀搜索对象")}
                   placeholder={tx("按前缀搜索对象")}
                   maxLength={1024}
-                  className="min-w-0 flex-1 md:h-8"
+                  className="h-7 min-w-0 !min-h-0 flex-1 text-sm md:h-8"
                   {...form.register("prefix")}
                 />
                 <Button
                   variant="outline"
-                  className="md:h-8 md:px-2.5"
+                  size="sm"
+                  className="h-7 !min-h-0 px-2 text-xs md:h-8 md:px-2.5 md:text-sm"
                   type="submit"
                   aria-label={tx("搜索")}
                   disabled={objects.isFetching}
@@ -288,7 +296,7 @@ export default function FilesPage() {
                   <span className="hidden xl:inline">{tx("搜索")}</span>
                 </Button>
               </form>
-              <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 text-sm text-muted-foreground md:min-h-8">
+              <label className="flex h-7 min-h-7 shrink-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground md:h-8 md:min-h-8 md:gap-2 md:text-sm">
                 <Checkbox
                   checked={view === "folders"}
                   aria-label={tx("将前缀显示为文件夹")}
@@ -304,6 +312,20 @@ export default function FilesPage() {
                 <span className="2xl:hidden">{tx("文件夹模式")}</span>
               </label>
             </div>
+            {focusedKey && (
+              <div className="flex h-8 shrink-0 items-center gap-1 border-b px-2 py-0.5 text-xs md:h-auto md:gap-2 md:px-3 md:py-1">
+                <span className="min-w-0 flex-1 truncate" title={focusedKey}>
+                  {tx("定位文件：{0}", { 0: focusedKey })}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => updateParams({})}
+                >
+                  {tx("查看所在文件夹")}
+                </Button>
+              </div>
+            )}
             <div className="min-h-0 flex-1 overflow-auto">
               {objects.isPending ? (
                 <Loading />
@@ -317,15 +339,23 @@ export default function FilesPage() {
                     access.data?.permissions.includes("object:files:delete") ??
                     false
                   }
-                  items={objects.data.items}
+                  items={
+                    focusedKey
+                      ? objects.data.items.filter(
+                          (item) => item.key === focusedKey,
+                        )
+                      : objects.data.items
+                  }
+                  focusedKey={focusedKey}
                   view={view}
                   onOpenFolder={openFolder}
                 />
               )}
             </div>
             {objects.data &&
+              !focusedKey &&
               (currentPage.history.length > 0 || objects.data.has_more) && (
-                <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2 text-xs lg:px-4">
+                <footer className="flex shrink-0 flex-wrap items-center justify-between gap-1 border-t px-2 py-1 text-xs md:gap-2 md:px-3 md:py-2 lg:px-4">
                   <span className="text-muted-foreground">
                     {tx("第 {0} 页 · 当前页 {1} 项", {
                       0: currentPage.history.length + 1,

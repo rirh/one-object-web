@@ -1,10 +1,6 @@
 import { useLocalAtom } from "@/hooks/use-local-atom"
 
-import {
-  type UseQueryResult,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { type UseQueryResult, useMutation } from "@tanstack/react-query"
 
 import {
   CircleUserRoundIcon,
@@ -15,7 +11,7 @@ import {
 
 import { lazy, Suspense } from "react"
 
-import { Link, useNavigate } from "react-router"
+import { Link } from "react-router"
 
 import { toast } from "sonner"
 
@@ -54,16 +50,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 import { getDefaultUserAvatarSeed } from "@/lib/default-user-avatar"
 
-import {
-  accountQueryKeys,
-  authUserQuery,
-  logout,
-  type AuthUser,
-} from "@/views/dashboard/account/api"
-
-import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
-
-import { adminQueryKeys } from "@/views/dashboard/query-keys"
+import { logout, type AuthUser } from "@/views/dashboard/account/api"
 
 const DefaultUserAvatar = lazy(async () => {
   const module = await import("@/components/default-user-avatar")
@@ -75,8 +62,6 @@ type SessionQuery = UseQueryResult<AuthUser | null, Error>
 export function SessionIdentity({ session }: { session: SessionQuery }) {
   const { isMobile } = useSidebar()
   const { locale, t } = useTranslation()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [logoutDialogOpen, setLogoutDialogOpen] = useLocalAtom(false)
   const user = session.data
   const displayName = user?.display_name ?? t("session.signedOut")
@@ -93,16 +78,8 @@ export function SessionIdentity({ session }: { session: SessionQuery }) {
       toast.error(t("account.logoutError"), {
         description: error.message,
       }),
-    onSuccess: async () => {
-      await queryClient.cancelQueries({ queryKey: authUserQuery.queryKey })
-      queryClient.clear()
-      queryClient.setQueryData(authUserQuery.queryKey, null)
-      queryClient.removeQueries({ queryKey: authPermissionsQuery.queryKey })
-      queryClient.removeQueries({ queryKey: accountQueryKeys.root })
-      queryClient.removeQueries({ queryKey: adminQueryKeys.root })
-      queryClient.removeQueries({ queryKey: ["developer"] })
-      setLogoutDialogOpen(false)
-      navigate("/login", { replace: true })
+    onSuccess: () => {
+      window.location.replace("/")
     },
   })
 
@@ -209,8 +186,8 @@ export function SessionIdentity({ session }: { session: SessionQuery }) {
             <ResponsiveDialogBody className="px-5 py-4">
               <ResponsiveDialogDescription className="leading-6">
                 {locale === "zh-CN"
-                  ? "确认退出当前账号吗？"
-                  : "Are you sure you want to sign out of the current account?"}
+                  ? "确认退出 One Object 并返回首页吗？这不会退出 One User 或其他平台。"
+                  : "Sign out of One Object and return home? One User and other platforms will remain signed in."}
               </ResponsiveDialogDescription>
             </ResponsiveDialogBody>
             <ResponsiveDialogFooter className="gap-2 px-5 py-3">

@@ -1,6 +1,7 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
 import { useObjectTranslation } from "@/local/object"
 
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 
@@ -12,13 +13,20 @@ import { AnimatedSegmentedTabs } from "@/components/ui/animated-segmented-tabs"
 
 import { useForm, useWatch } from "react-hook-form"
 
-import { CircleHelpIcon } from "lucide-react"
+import { useEffect, useState } from "react"
+
+import { CircleHelpIcon, EyeIcon, EyeOffIcon } from "lucide-react"
 
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
-
 import { Input } from "@/components/ui/input"
+
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 
 import { Field, FieldLabel, FieldError } from "@/components/ui/field"
 
@@ -44,10 +52,24 @@ import { SweepShine } from "@/components/sweep-shine"
 import {
   PROVIDERS,
   createAccount,
+  getAccountCredentials,
   updateAccount,
   type ConnectionInput,
   type StorageAccount,
 } from "../api"
+
+function endpointIdentity(account: StorageAccount) {
+  try {
+    const host = new URL(account.endpoint).hostname
+    if (account.provider === "r2") return host.split(".")[0]
+    if (account.provider === "oci") {
+      return host.split(".compat.objectstorage.")[0]
+    }
+  } catch {
+    return ""
+  }
+  return ""
+}
 
 export function ConnectionEditor({
   value,
@@ -73,6 +95,24 @@ export function ConnectionEditor({
       secret_key: "",
     },
   })
+  const credentials = useQuery({
+    queryKey: ["storage-account-credentials", existing?.id],
+    queryFn: () => getAccountCredentials(existing?.id ?? ""),
+    enabled: Boolean(existing),
+    retry: false,
+    gcTime: 0,
+  })
+  const { setValue } = form
+  useEffect(() => {
+    if (!credentials.data) return
+    setValue("access_key", credentials.data.access_key)
+    setValue("secret_key", credentials.data.secret_key)
+  }, [credentials.data, setValue])
+  const credentialsUnavailable = Boolean(existing) && credentials.isError
+  const credentialsReady =
+    !existing || credentials.isSuccess || credentialsUnavailable
+  const [showSecret, setShowSecret] = useState(false)
+  const existingIdentity = existing ? endpointIdentity(existing) : ""
   const provider = useWatch({ control: form.control, name: "provider" })
   const save = useMutation({
     mutationFn: async (input: ConnectionInput) => {
@@ -101,22 +141,31 @@ export function ConnectionEditor({
       }}
     >
       <ResponsiveDialogContent className="flex max-h-[90svh] flex-col sm:max-w-xl">
-        <ResponsiveDialogHeader>
+        <ResponsiveDialogHeader className="max-md:px-3 max-md:py-1.5 max-md:pr-10">
           <ResponsiveDialogTitle>
             {existing ? tx("编辑接入") : tx("新增厂商接入")}
           </ResponsiveDialogTitle>
-          <ResponsiveDialogDescription>
+          <ResponsiveDialogDescription className="sr-only md:not-sr-only">
             {tx(
-              "配置厂商账号，密钥在服务端加密保存。保存后可在桶管理中同步或创建存储桶。",
+              "配置厂商账号，密钥直接保存。保存后可在桶管理中同步或创建存储桶。",
             )}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         <form
           className="flex min-h-0 flex-col"
           noValidate
-          onSubmit={form.handleSubmit((input) => save.mutate(input))}
+          onSubmit={form.handleSubmit((input) => {
+            if (
+              credentialsUnavailable &&
+              (!input.access_key.trim() || !input.secret_key.trim())
+            ) {
+              toast.error(tx("原存储凭证无法读取，请重新填写两个密钥后保存。"))
+              return
+            }
+            save.mutate(input)
+          })}
         >
-          <ResponsiveDialogBody className="grid gap-x-4 gap-y-3 overflow-y-auto sm:grid-cols-2 [&_[data-slot=field]]:gap-1.5 [&_[data-slot=input]]:h-8">
+          <ResponsiveDialogBody className="grid gap-x-4 gap-y-3 overflow-y-auto max-md:gap-y-2 max-md:p-3 sm:grid-cols-2 [&_[data-slot=field]]:gap-1.5 [&_[data-slot=input]]:h-8">
             {!existing && (
               <Field className="sm:col-span-2">
                 <div className="flex items-center gap-1.5">
@@ -238,9 +287,74 @@ export function ConnectionEditor({
               </>
             )}
             {existing && (
-              <p className="text-sm text-muted-foreground sm:col-span-2">
-                {tx(PROVIDERS[existing.provider])} · {existing.region}
-                {tx("。默认区域用于请求签名，各桶可使用不同区域。")}
+              <div className="grid gap-x-4 gap-y-3 sm:col-span-2 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="connection-provider">
+                    {tx("存储厂商")}
+                  </FieldLabel>
+                  <Input
+                    id="connection-provider"
+                    value={tx(PROVIDERS[existing.provider])}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50"
+                  />
+                </Field>
+                {existingIdentity && (
+                  <Field>
+                    <FieldLabel htmlFor="connection-identity">
+                      {existing.provider === "r2"
+                        ? "Cloudflare Account ID"
+                        : "Object Storage Namespace"}
+                    </FieldLabel>
+                    <Input
+                      id="connection-identity"
+                      value={existingIdentity}
+                      readOnly
+                      tabIndex={-1}
+                      className="bg-muted/50"
+                    />
+                  </Field>
+                )}
+                <Field>
+                  <FieldLabel htmlFor="connection-region">
+                    {tx("区域")}
+                  </FieldLabel>
+                  <Input
+                    id="connection-region"
+                    value={existing.region}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50"
+                  />
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel htmlFor="connection-endpoint">
+                    Endpoint
+                  </FieldLabel>
+                  <Input
+                    id="connection-endpoint"
+                    value={existing.endpoint}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50"
+                  />
+                </Field>
+              </div>
+            )}
+            {existing && !credentialsReady && (
+              <p
+                className={
+                  credentials.isError
+                    ? "text-sm text-destructive sm:col-span-2"
+                    : "text-sm text-muted-foreground sm:col-span-2"
+                }
+              >
+                {tx(
+                  credentials.isError
+                    ? "原存储凭证无法读取，请重新填写两个密钥后保存。"
+                    : "加载中",
+                )}
               </p>
             )}
             <Field>
@@ -256,8 +370,9 @@ export function ConnectionEditor({
                 id="connection-access"
                 aria-invalid={!!form.formState.errors.access_key}
                 aria-describedby="connection-access-error"
-                required={!existing}
+                required={!existing || credentialsUnavailable}
                 autoComplete="off"
+                disabled={!credentialsReady}
                 {...form.register("access_key")}
               />
               <FieldError
@@ -304,33 +419,52 @@ export function ConnectionEditor({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <Input
-                id="connection-secret"
-                aria-invalid={!!form.formState.errors.secret_key}
-                aria-describedby="connection-secret-error"
-                type="password"
-                required={!existing}
-                autoComplete="new-password"
-                {...form.register("secret_key")}
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="connection-secret"
+                  aria-invalid={!!form.formState.errors.secret_key}
+                  aria-describedby="connection-secret-error"
+                  type={showSecret ? "text" : "password"}
+                  required={!existing || credentialsUnavailable}
+                  autoComplete="new-password"
+                  disabled={!credentialsReady}
+                  {...form.register("secret_key")}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    aria-label={tx(showSecret ? "隐藏密码" : "显示密码")}
+                    size="icon-xs"
+                    disabled={!credentialsReady}
+                    onClick={() => setShowSecret((visible) => !visible)}
+                  >
+                    {showSecret ? <EyeOffIcon /> : <EyeIcon />}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
               <FieldError
                 id="connection-secret-error"
                 errors={[form.formState.errors.secret_key]}
               />
             </Field>
           </ResponsiveDialogBody>
-          <ResponsiveDialogFooter>
-            <Button
+          <ResponsiveDialogFooter className="max-md:flex-row max-md:gap-2 max-md:px-3 max-md:py-2">
+            <DialogActionButton
+              action="cancel"
               type="button"
               variant="outline"
+              className="max-md:min-w-0 max-md:flex-[2]"
               disabled={save.isPending}
               onClick={close}
             >
               {tx("取消")}
-            </Button>
-            <Button type="submit" disabled={save.isPending}>
+            </DialogActionButton>
+            <DialogActionButton
+              type="submit"
+              className="max-md:min-w-0 max-md:flex-[3]"
+              disabled={save.isPending || !credentialsReady}
+            >
               <SweepShine active={save.isPending}>{tx("保存")}</SweepShine>
-            </Button>
+            </DialogActionButton>
           </ResponsiveDialogFooter>
         </form>
       </ResponsiveDialogContent>

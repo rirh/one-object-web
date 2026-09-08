@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { DefaultUserAvatar } from "@/components/default-user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { DialogActionButton } from "@/components/ui/dialog-action-button"
 import {
@@ -40,6 +42,8 @@ type User = {
   user_id: string
   oidc_sub: string
   display_name: string
+  avatar_url: string | null
+  email: string | null
   status: "active" | "disabled" | "deleted"
   role_ids: string[]
   created_at: string
@@ -63,6 +67,15 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
       return n < page.total ? n : undefined
     },
   })
+  const roles = useQuery({
+    queryKey: rbacQueryKeys.roles,
+    queryFn: listRoles,
+    enabled: permissions.includes("object:role:list"),
+  })
+  const roleNames = useMemo(
+    () => new Map(roles.data?.map((role) => [role.role_id, role.role_name])),
+    [roles.data],
+  )
   const data = useMemo(
     () =>
       users.data?.pages
@@ -70,7 +83,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         .filter(
           (u) =>
             (status === "all" || status === u.status) &&
-            `${u.display_name} ${u.oidc_sub}`
+            `${u.display_name} ${u.oidc_sub} ${u.email ?? ""}`
               .toLowerCase()
               .includes(search.toLowerCase()),
         ) || [],
@@ -82,10 +95,64 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         accessorKey: "display_name",
         header: tx("用户"),
         cell: ({ row }) => (
-          <div className="font-medium">{row.original.display_name}</div>
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="size-9 shrink-0">
+              <AvatarImage
+                src={row.original.avatar_url || undefined}
+                alt={row.original.display_name}
+              />
+              <AvatarFallback>
+                <DefaultUserAvatar seed={row.original.oidc_sub} />
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="max-w-64 truncate font-medium">
+                {row.original.display_name &&
+                row.original.display_name !== row.original.oidc_sub
+                  ? row.original.display_name
+                  : row.original.email ||
+                    `${tx("用户")} #${row.original.oidc_sub}`}
+              </div>
+              <div
+                className="max-w-72 truncate text-xs text-muted-foreground"
+                title={[row.original.email, `ID: ${row.original.oidc_sub}`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              >
+                {row.original.email &&
+                  row.original.display_name !== row.original.oidc_sub &&
+                  `${row.original.email} · `}
+                ID: {row.original.oidc_sub}
+              </div>
+            </div>
+          </div>
         ),
       },
-      { accessorKey: "oidc_sub", header: tx("One User 账号标识") },
+      {
+        accessorKey: "role_ids",
+        header: tx("角色"),
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="flex max-w-72 flex-wrap gap-1">
+            {row.original.role_ids.length ? (
+              row.original.role_ids.map((id) => (
+                <Badge key={id} variant="outline" className="max-w-full">
+                  <span
+                    className="truncate"
+                    title={roleNames.get(id) || `#${id}`}
+                  >
+                    {roleNames.get(id) || `#${id}`}
+                  </span>
+                </Badge>
+              ))
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {tx("未分配角色")}
+              </span>
+            )}
+          </div>
+        ),
+      },
       {
         accessorKey: "status",
         header: tx("状态"),
@@ -105,7 +172,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         cell: ({ getValue }) => formatAdminTime(getValue<string>()),
       },
     ],
-    [tx],
+    [tx, roleNames],
   )
   return (
     <>
@@ -344,9 +411,14 @@ function UserDialog({
           </ResponsiveDialogBody>
           <ResponsiveDialogFooter>
             <ResponsiveDialogClose asChild>
-              <Button variant="outline" disabled={mutation.isPending}>
+              <DialogActionButton
+                action="cancel"
+                type="button"
+                variant="outline"
+                disabled={mutation.isPending}
+              >
                 {tx("取消")}
-              </Button>
+              </DialogActionButton>
             </ResponsiveDialogClose>
             <DialogActionButton
               type="submit"

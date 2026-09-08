@@ -58,3 +58,8 @@ export function saveFileLocation(
     /* Storage is optional. */
   }
 }
+
+export function fileLocationHref(storageId: string, key: string) {
+  const prefix = key.slice(0, key.lastIndexOf("/") + 1)
+  return `${filePath(storageId, prefix)}?${new URLSearchParams({ view: "folders", focus: key })}`
+}

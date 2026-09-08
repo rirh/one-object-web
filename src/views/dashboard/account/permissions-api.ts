@@ -21,7 +21,9 @@ export type AuthPermissions = {
 const legacyPaths: Record<string, string> = {
   "/files": "/dashboard/files",
   "/uploads": "/dashboard/uploads",
-  "/keys": "/dashboard/keys",
+  "/keys": "/dashboard/authorizations",
+  "/dashboard/keys": "/dashboard/authorizations",
+  "/authorizations": "/dashboard/authorizations",
   "/buckets": "/dashboard/buckets",
   "/storage": "/dashboard/storage",
   "/admin/users": "/dashboard/admin?section=users",

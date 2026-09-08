@@ -1,3 +1,4 @@
+import { syncAndRefreshBuckets, syncBucketsWithAnimation } from "./sync"
 import { useVendorColumns } from "./components/vendor-columns"
 import { useLocalAtom } from "@/hooks/use-local-atom"
 import { BucketDialog } from "./components/bucket-dialog"
@@ -39,8 +40,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { authPermissionsQuery } from "@/views/dashboard/account/permissions-api"
 import { ResourceTable } from "@/views/dashboard/admin/components/shared/resource-table"
-import { listAccounts, updateConnection } from "@/views/dashboard/storage/api"
-import { deleteBucket, listBuckets, syncBuckets, type Bucket } from "./api"
+import {
+  listAccounts,
+  updateConnection,
+  type StorageAccount,
+} from "@/views/dashboard/storage/api"
+import { deleteBucket, listBuckets, type Bucket } from "./api"
 
 const states = {
   unknown: "未同步",
@@ -48,6 +53,16 @@ const states = {
   missing: "云端未找到",
   deleted: "已删除",
 } as const
+
+function bucketCountLabel(
+  account: StorageAccount,
+  tx: ReturnType<typeof useObjectTranslation>,
+) {
+  return account.bucket_count == null ||
+    (!account.synced_at && account.bucket_count === 0)
+    ? tx("未同步")
+    : String(account.bucket_count)
+}
 
 type BucketStatusFilter = "all" | "active" | "disabled"
 
@@ -104,20 +119,28 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
       client.invalidateQueries({ queryKey: ["storage-accounts"] }),
     ])
   }
+  const syncAfterChange = async () => {
+    const error = await syncAndRefreshBuckets(client, accountId, can("sync"))
+    if (error) {
+      toast.warning(tx("云端同步失败，请刷新重试"), {
+        description: error instanceof Error ? tx(error.message) : undefined,
+      })
+    }
+  }
   const toggle = useMutation({
     mutationFn: ({ bucket, enabled }: { bucket: Bucket; enabled: boolean }) =>
       updateConnection(bucket.id, { name: bucket.name, enabled }),
     onSuccess: async () => {
-      await refresh()
+      await syncAfterChange()
       setDisabling(null)
     },
     onError: (error) => toast.error(tx(error.message)),
   })
   const sync = useMutation({
-    mutationFn: (targetAccountId: string) => syncBuckets(targetAccountId),
-    onSuccess: (result, targetAccountId) => {
+    mutationFn: syncBucketsWithAnimation,
+    onSuccess: async (result, targetAccountId) => {
+      await refresh(targetAccountId)
       toast.success(tx("已同步 ") + result.count + tx(" 个云端存储桶"))
-      void refresh(targetAccountId)
     },
     onError: (error) => toast.error(tx(error.message)),
   })
@@ -131,22 +154,23 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
       bulkDeleting?.clearSelection()
       setBulkDeleting(null)
       toast.success(tx("已删除 ") + items.length + tx(" 个云端存储桶"))
-      void refresh()
     },
     onError: (error) => {
       bulkDeleting?.clearSelection()
       setBulkDeleting(null)
       toast.error(tx(error.message))
-      void refresh()
     },
+    onSettled: syncAfterChange,
   })
 
   const filteredBuckets = useMemo(() => {
     const keyword = search.trim().toLowerCase()
     return (buckets.data?.items ?? []).filter(
       (bucket) =>
+        bucket.cloud_state !== "deleted" &&
         (statusFilter === "all" ||
-          bucket.enabled === (statusFilter === "active")) &&
+          (bucket.enabled && bucket.cloud_state === "present") ===
+            (statusFilter === "active")) &&
         (!keyword ||
           [bucket.bucket, bucket.region, tx(states[bucket.cloud_state])].some(
             (value) => value.toLowerCase().includes(keyword),
@@ -161,7 +185,7 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
       cell: ({ row: { original: bucket } }) => (
         <span className="flex max-w-[min(48rem,60vw)] items-center gap-2 font-medium">
           <DatabaseIcon aria-hidden="true" className="size-4 shrink-0" />
-          {canReadFiles ? (
+          {canReadFiles && bucket.cloud_state === "present" ? (
             <TextLink asChild tooltip={bucket.bucket}>
               <Link
                 className="min-w-0 text-primary"
@@ -211,7 +235,7 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
       header: tx("状态"),
       cell: ({ row: { original: bucket } }) => (
         <Switch
-          checked={bucket.enabled}
+          checked={bucket.enabled && bucket.cloud_state === "present"}
           aria-label={tx("{0} 启用状态", { 0: bucket.bucket })}
           aria-busy={
             toggle.isPending && toggle.variables?.bucket.id === bucket.id
@@ -253,16 +277,64 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:flex-row">
-      <div className="flex shrink-0 items-center gap-2 border-b p-3 md:hidden">
+      <div className="flex shrink-0 items-center gap-1.5 border-b px-2 py-2 md:hidden">
         <Select value={accountId} onValueChange={selectAccount}>
-          <SelectTrigger className="min-w-0 flex-1" aria-label={tx("厂商")}>
-            <SelectValue placeholder={tx("选择厂商")} />
+          <SelectTrigger
+            size="sm"
+            className="min-w-0 flex-1"
+            aria-label={tx("厂商")}
+          >
+            <SelectValue
+              className="min-w-0 flex-1"
+              placeholder={tx("选择厂商")}
+            >
+              {account ? (
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <img
+                    src={`/storage-providers/${account.provider}.svg`}
+                    alt=""
+                    aria-hidden="true"
+                    className="size-4 shrink-0 object-contain"
+                  />
+                  <span className="min-w-0 truncate font-medium">
+                    {account.name}
+                  </span>
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto px-1.5 text-[11px] font-normal"
+                  >
+                    {bucketCountLabel(account, tx)}
+                  </Badge>
+                </span>
+              ) : null}
+            </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="w-(--radix-select-trigger-width)">
             {accounts.data.items.map((vendor) => (
-              <SelectItem key={vendor.id} value={vendor.id}>
-                {vendor.name}
-                {!vendor.enabled ? tx("（已停用）") : ""}
+              <SelectItem
+                key={vendor.id}
+                value={vendor.id}
+                textValue={`${vendor.name} ${bucketCountLabel(vendor, tx)}`}
+                className="py-1.5 pr-10"
+              >
+                <span className="flex min-w-0 w-full items-center gap-1.5">
+                  <img
+                    src={`/storage-providers/${vendor.provider}.svg`}
+                    alt=""
+                    aria-hidden="true"
+                    className="size-4 shrink-0 object-contain"
+                  />
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {vendor.name}
+                    {!vendor.enabled ? tx("（已停用）") : ""}
+                  </span>
+                  <Badge
+                    variant="secondary"
+                    className="px-1.5 text-[11px] font-normal"
+                  >
+                    {bucketCountLabel(vendor, tx)}
+                  </Badge>
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -270,13 +342,17 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
         {can("sync") && (
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             aria-label={tx("同步云端")}
             disabled={!account?.enabled || sync.isPending}
             onClick={() => sync.mutate(accountId)}
           >
             <RefreshCwIcon
-              className={sync.isPending ? "animate-spin" : undefined}
+              className={
+                sync.isPending
+                  ? "animate-spin motion-reduce:animate-none"
+                  : undefined
+              }
             />
           </Button>
         )}
@@ -290,13 +366,16 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
             emptyLabel={tx("暂无厂商配置")}
             getRowClassName={(vendor) =>
               vendor.id === accountId
-                ? "group bg-primary/5 hover:bg-primary/10"
-                : "group"
+                ? "group/vendor-row bg-primary/5 hover:bg-primary/10"
+                : "group/vendor-row"
             }
             getRowId={(vendor) => vendor.id}
             isFetching={accounts.isFetching || buckets.isFetching}
             isLoading={accounts.isPending}
-            onRefresh={() => void refresh()}
+            onRefresh={() => {
+              if (can("sync") && account?.enabled) sync.mutate(accountId)
+              else void refresh()
+            }}
             onRowClick={(vendor) => selectAccount(vendor.id)}
             onSearchChange={() => undefined}
             onStatusFilterChange={() => undefined}
@@ -305,15 +384,12 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
             renderRowActions={(vendor) => {
               const canSync = can("sync") && vendor.enabled
               const syncing = sync.isPending && sync.variables === vendor.id
-              const count =
-                vendor.bucket_count == null ||
-                (!vendor.synced_at && vendor.bucket_count === 0)
-                  ? tx("未同步")
-                  : String(vendor.bucket_count)
+              const showSyncButton = syncing || !sync.isPending
+              const count = bucketCountLabel(vendor, tx)
               return (
                 <div className="grid h-7 min-w-7 items-center justify-items-center">
                   <span
-                    className={`[grid-area:1/1] text-xs tabular-nums text-muted-foreground transition-opacity ${canSync ? "group-hover:opacity-0 group-focus-within:opacity-0 [@media(hover:none)]:opacity-0" : ""} ${syncing ? "opacity-0" : ""}`}
+                    className={`${canSync && !sync.isPending ? "pointer-events-none" : ""} [grid-area:1/1] text-xs tabular-nums text-muted-foreground transition-opacity ${canSync && !sync.isPending ? "group-hover/vendor-row:opacity-0 group-focus-within/vendor-row:opacity-0 [@media(hover:none)]:opacity-0" : ""} ${syncing ? "opacity-0" : ""}`}
                     title={tx("桶数量")}
                   >
                     {count}
@@ -323,18 +399,23 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
                       type="button"
                       variant="outline"
                       size="icon-sm"
-                      className={`[grid-area:1/1] size-7 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 ${syncing ? "opacity-100" : "opacity-0"}`}
+                      className={`relative z-10 [grid-area:1/1] size-7 pointer-events-none opacity-0 transition-opacity ${showSyncButton && !syncing ? "group-hover/vendor-row:pointer-events-auto group-hover/vendor-row:opacity-100 group-focus-within/vendor-row:pointer-events-auto group-focus-within/vendor-row:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100" : ""} ${syncing ? "pointer-events-auto opacity-100" : ""}`}
                       aria-label={vendor.name + tx(" 同步")}
                       disabled={sync.isPending}
                       aria-busy={syncing}
                       title={tx("同步云端")}
+                      onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation()
                         sync.mutate(vendor.id)
                       }}
                     >
                       <RefreshCwIcon
-                        className={syncing ? "animate-spin" : undefined}
+                        className={
+                          syncing
+                            ? "animate-spin motion-reduce:animate-none"
+                            : undefined
+                        }
                       />
                     </Button>
                   )}
@@ -403,7 +484,10 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
                         setBulkDeleting({ buckets: items, clearSelection })
                     : undefined
                 }
-                onRefresh={() => void refresh()}
+                onRefresh={() => {
+                  if (can("sync") && account?.enabled) sync.mutate(accountId)
+                  else void refresh()
+                }}
                 onSearchChange={setSearch}
                 onStatusFilterChange={setStatusFilter}
                 renderRowActions={(bucket) => {
@@ -463,7 +547,7 @@ function BucketManager({ selectedId }: { selectedId?: string }) {
                   defaultRegion={account.region}
                   value={editor}
                   close={() => setEditor(null)}
-                  saved={() => void refresh()}
+                  saved={syncAfterChange}
                 />
               )}
               <BucketBulkDeleteDialog

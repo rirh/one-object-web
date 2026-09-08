@@ -1,4 +1,10 @@
 export const core = {
+  "云端同步失败，请刷新重试": "Cloud sync failed. Refresh to retry.",
+  "定位文件：{0}": "Located file: {0}",
+  查看所在文件夹: "View containing folder",
+  文件不存在或已被删除: "File not found or deleted",
+  未找到对应存储接入: "Storage connection not found",
+
   清空: "Clear all",
   "正在清空…": "Clearing…",
   "{0} 已选": "{0} selected",
@@ -6,8 +12,8 @@ export const core = {
   "已删除 {0} 个文件": "Deleted {0} files",
   "已删除 {0} 个文件，{1} 个失败": "Deleted {0} files; {1} failed",
   批量删除文件: "Delete selected files",
-  "确定删除选中的 {0} 个文件吗？将删除云端对象，此操作无法在本应用中撤销。":
-    "Delete the selected {0} files? Cloud objects will be deleted. This cannot be undone in this app.",
+  "删除 {0} 个文件，此操作不可撤销。":
+    "Delete {0} files. This cannot be undone.",
   "正在删除…": "Deleting…",
   全选当前页文件: "Select all files on this page",
   "选择 {0}": "Select {0}",
@@ -18,6 +24,8 @@ export const core = {
   请求未完成: "Request incomplete",
   重新登录: "Sign in again",
   重试: "Retry",
+  显示密码: "Show password",
+  隐藏密码: "Hide password",
   已复制: "Copied",
   复制失败: "Copy failed",
   个人资料: "Profile",
@@ -128,6 +136,7 @@ export const core = {
   加载更多用户: "Load more users",
   编辑用户: "Edit user",
   分配角色: "Assign roles",
+  未分配角色: "No roles assigned",
   删除用户: "Delete user",
   "绑定已有 One User 账号，创建后再分配角色。":
     "Link an existing One User account, then assign roles after creation.",
@@ -214,6 +223,13 @@ export const core = {
   个文件: " files",
   在: "In ",
   应用密钥: "Application keys",
+  授权管理: "Authorization management",
+  创建授权: "Create authorization",
+  已授权应用: "Authorized applications",
+  暂无应用授权: "No application authorizations",
+  "例如 One User 头像服务": "For example, One User avatars",
+  "为其他应用生成访问 Token，按需授予上传、读取和删除权限。Token 仅显示一次，请保存到应用后端。":
+    "Generate access tokens for other applications with upload, read and delete permissions as needed. Tokens are shown once; store them in your application backend.",
   "创建专用密钥，选择需要的权限。":
     "create a dedicated key and select the required permissions.",
   "把 Object 地址和密钥配置到应用后端，使用 Authorization: Bearer 鉴权。":
@@ -268,8 +284,8 @@ export const core = {
   存储接入已保存: "Storage connection saved",
   编辑接入: "Edit connection",
   新增厂商接入: "Add provider connection",
-  "配置厂商账号，密钥在服务端加密保存。保存后可在桶管理中同步或创建存储桶。":
-    "Configure a provider account. Credentials are encrypted on the server. Then sync or create buckets in Buckets.",
+  "配置厂商账号，密钥直接保存。保存后可在桶管理中同步或创建存储桶。":
+    "Configure a provider account. Credentials are stored directly. Then sync or create buckets in Buckets.",
   存储厂商: "Storage provider",
   "默认区域（可选）": "Default region (optional)",
   "。默认区域用于请求签名，各桶可使用不同区域。":
@@ -277,6 +293,8 @@ export const core = {
   密钥配置说明: "Credential configuration help",
   "两个密钥字段留空可保留原凭证。":
     "Leave both key fields empty to keep the existing credentials.",
+  "原存储凭证无法读取，请重新填写两个密钥后保存。":
+    "The existing storage credentials cannot be read. Re-enter both keys and save.",
   "同步需要列桶权限，创建和删除需要对应的桶管理权限。":
     "Syncing requires bucket listing permission. Creating and deleting require the corresponding bucket management permissions.",
   保存: "Save",

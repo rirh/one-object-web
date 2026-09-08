@@ -14,6 +14,7 @@ const input = {
 it("validates the selected provider fields", () => {
   const schema = connectionSchema(false)
   expect(schema.safeParse(input).success).toBe(true)
+  expect(schema.safeParse({ ...input, name: "hu_zhi_hui" }).success).toBe(true)
   expect(schema.safeParse({ ...input, account_id: "" }).success).toBe(false)
   expect(
     schema.safeParse({ ...input, provider: "aws", account_id: "" }).success,

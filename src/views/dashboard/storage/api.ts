@@ -53,6 +53,14 @@ export type StorageAccount = Omit<
 }
 export const listAccounts = (signal?: AbortSignal) =>
   request<{ items: StorageAccount[] }>("/api/storage/accounts", { signal })
+export type StorageCredentials = {
+  access_key: string
+  secret_key: string
+}
+export const getAccountCredentials = (id: string) =>
+  request<StorageCredentials>(
+    `/api/storage/accounts/${encodeURIComponent(id)}/credentials`,
+  )
 export const createAccount = ({ bucket: _bucket, ...input }: ConnectionInput) =>
   request<{ id: string }>("/api/storage/accounts", json(input))
 export const updateAccount = (

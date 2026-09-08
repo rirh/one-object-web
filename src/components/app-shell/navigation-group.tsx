@@ -41,7 +41,7 @@ export function NavigationGroupSection({
               <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
                 <Link
                   aria-current={isActive ? "page" : undefined}
-                  className="h-11 md:h-8"
+                  className="h-10 md:h-8"
                   onClick={() => {
                     if (isMobile) setOpenMobile(false)
                   }}

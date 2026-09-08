@@ -3,6 +3,8 @@ export type ObjectFile = {
   id: string
   app_id: string
   original_filename: string
+  object_key: string
+  browse_storage_id: string | null
   file_size: number
   mime_type: string
   storage_id: string

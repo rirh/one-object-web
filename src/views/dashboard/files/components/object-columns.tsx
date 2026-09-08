@@ -100,7 +100,7 @@ export function objectColumns({
             {folder ? (
               <button
                 type="button"
-                className="min-h-11 min-w-0 text-left text-primary hover:underline md:min-h-7"
+                className="min-h-7 min-w-0 text-left text-primary hover:underline"
                 onClick={() => onOpenFolder(item.key)}
               >
                 <NameTooltip

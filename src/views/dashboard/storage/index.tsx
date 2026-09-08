@@ -1,3 +1,5 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
+import { UnderlineHover } from "@/components/underline-hover"
 import { useLocalAtom } from "@/hooks/use-local-atom"
 import { ConnectionEditor } from "./components/connection-editor"
 import { useObjectTranslation } from "@/local/object"
@@ -148,12 +150,25 @@ export default function StoragePage() {
             alt=""
             className="size-5 shrink-0 object-contain"
           />
-          <span
-            className="truncate font-medium"
-            title={tx(PROVIDERS[account.provider])}
-          >
-            {account.name}
-          </span>
+          {canWrite ? (
+            <UnderlineHover asChild>
+              <button
+                type="button"
+                className="min-w-0 truncate text-left font-medium"
+                title={account.name}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setEditor(account)
+                }}
+              >
+                {account.name}
+              </button>
+            </UnderlineHover>
+          ) : (
+            <span className="truncate font-medium" title={account.name}>
+              {account.name}
+            </span>
+          )}
         </div>
       ),
       meta: { label: tx("厂商名称"), headerClassName: "w-[45%]" },
@@ -185,6 +200,7 @@ export default function StoragePage() {
               if (enabled) toggle.mutate(account)
               else setConfirmation({ kind: "disable", accounts: [account] })
             }}
+            onClick={(event) => event.stopPropagation()}
           />
           <span className="text-xs text-muted-foreground">
             {account.enabled ? tx("启用") : tx("停用")}
@@ -213,6 +229,7 @@ export default function StoragePage() {
         onRefresh={() => void reloadAccounts()}
         onRefreshAnimationIteration={finishRefreshRotation}
         onCreate={canWrite ? () => setEditor("new") : undefined}
+        onRowClick={canWrite ? (account) => setEditor(account) : undefined}
         createLabel={tx("新增接入")}
         emptyLabel={tx("暂无厂商配置")}
         isBulkDeleting={remove.isPending}
@@ -242,6 +259,7 @@ export default function StoragePage() {
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuGroup>
                 <DropdownMenuItem
+                  className="max-md:!min-h-9"
                   disabled={check.isPending || !account.enabled}
                   onSelect={() => check.mutate(account.id)}
                 >
@@ -249,7 +267,10 @@ export default function StoragePage() {
                   {tx("检测连接")}
                 </DropdownMenuItem>
                 {canWrite && (
-                  <DropdownMenuItem onSelect={() => setEditor(account)}>
+                  <DropdownMenuItem
+                    className="max-md:!min-h-9"
+                    onSelect={() => setEditor(account)}
+                  >
                     <PencilIcon />
                     {tx("编辑")}
                   </DropdownMenuItem>
@@ -259,6 +280,7 @@ export default function StoragePage() {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
+                    className="max-md:!min-h-9"
                     variant="destructive"
                     onSelect={() =>
                       setConfirmation({ kind: "delete", accounts: [account] })
@@ -313,14 +335,16 @@ export default function StoragePage() {
             </ul>
           </ResponsiveDialogBody>
           <ResponsiveDialogFooter>
-            <Button
+            <DialogActionButton
+              action="cancel"
+              type="button"
               variant="outline"
               disabled={pending}
               onClick={() => setConfirmation(null)}
             >
               {tx("取消")}
-            </Button>
-            <Button
+            </DialogActionButton>
+            <DialogActionButton
               variant={
                 confirmation?.kind === "delete" ? "destructive" : "default"
               }
@@ -337,7 +361,7 @@ export default function StoragePage() {
                   ? tx("确认停用")
                   : tx("确认删除")}
               </SweepShine>
-            </Button>
+            </DialogActionButton>
           </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
       </ResponsiveDialog>

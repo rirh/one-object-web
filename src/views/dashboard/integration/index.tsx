@@ -16,7 +16,7 @@ export default function IntegrationPage() {
         <li>
           {tx("在")}{" "}
           <UnderlineHover asChild>
-            <Link to="/dashboard/keys">{tx("应用密钥")}</Link>
+            <Link to="/dashboard/authorizations">{tx("授权管理")}</Link>
           </UnderlineHover>{" "}
           {tx("创建专用密钥，选择需要的权限。")}
         </li>

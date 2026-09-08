@@ -3,18 +3,35 @@ import { UploadTask } from "./upload-task"
 import { SweepShine } from "@/components/sweep-shine"
 import { type Entry } from "../../store/queue"
 import { useObjectTranslation } from "@/local/object"
-import { useCallback, useEffect, useRef } from "react"
+import { type ReactNode, useCallback, useEffect, useRef } from "react"
 import { useSetAtom } from "jotai"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { PauseIcon, LoaderCircleIcon, XIcon, ListIcon } from "lucide-react"
+import {
+  PauseIcon,
+  LoaderCircleIcon,
+  XIcon,
+  ListIcon,
+  UploadIcon,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover"
 import { AnimatedSegmentedTabs } from "@/components/ui/animated-segmented-tabs"
+import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  ResponsiveDialog,
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/ui/responsive-dialog"
 import { type StorageConnection } from "@/views/dashboard/storage/api"
 import {
   abortUpload,
@@ -41,6 +58,7 @@ export function UploadControl({
   onOpenChange,
 }: UploadControlProps) {
   const tx = useObjectTranslation()
+  const isMobile = useIsMobile()
 
   const enabled = connections.filter((item) => item.enabled)
   const preferred = enabled.some((item) => item.id === defaultStorageId)
@@ -264,57 +282,174 @@ export function UploadControl({
   const active = entries.some(
     (item) => item.status === "uploading" || item.status === "queued",
   )
-  return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <div className="flex items-center">
-        <Button
-          size="sm"
-          className="rounded-r-none"
-          disabled={!storageId || clearing}
-          onClick={() => {
-            destination.current = { storageId, prefix: defaultPrefix }
-            picker.current?.click()
-          }}
-        >
-          {tx("上传")}
-        </Button>
-        <input
-          ref={picker}
-          type="file"
-          multiple
-          className="hidden"
-          aria-label={tx("添加文件到上传队列")}
-          onChange={(event) => {
-            addFiles(event.target.files)
-            event.target.value = ""
-          }}
-        />
-        <PopoverTrigger asChild>
+  const queueBody = (
+    <>
+      {entries.length > 0 && (
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <AnimatedSegmentedTabs
+            label={tx("上传队列")}
+            value={filter}
+            onValueChange={setFilter}
+            listClassName="h-8"
+            triggerClassName="px-2 text-xs"
+            options={[
+              { value: "all", label: tx("全部") },
+              { value: "pending", label: tx("未完成") },
+              { value: "completed", label: tx("已完成") },
+            ]}
+          />
+          <div className="flex items-center gap-0.5">
+            {active && (
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                title={tx("全部暂停")}
+                aria-label={tx("全部暂停")}
+                disabled={clearing}
+                onClick={pauseAll}
+              >
+                <PauseIcon />
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-busy={clearing}
+              disabled={clearing || cancelling !== null}
+              onClick={() => void clearAll()}
+            >
+              <SweepShine active={clearing}>{tx("清空")}</SweepShine>
+            </Button>
+          </div>
+        </div>
+      )}
+      {query.error && (
+        <p role="alert" className="text-xs text-destructive">
+          {tx("未完成任务读取失败：")}
+          {tx(query.error.message)}
           <Button
-            size="icon-sm"
-            className="relative rounded-l-none border-l border-primary-foreground/25"
-            aria-label={tx("上传队列")}
-            onPointerEnter={(event) => {
+            size="sm"
+            variant="ghost"
+            onClick={() => void query.refetch()}
+          >
+            {tx("重试")}
+          </Button>
+        </p>
+      )}
+      <ul className="max-h-[45svh] divide-y overflow-y-auto">
+        {visible.map((entry) => (
+          <UploadTask
+            key={entry.key}
+            entry={entry}
+            clearing={clearing}
+            cancelling={cancelling}
+            update={update}
+            onPause={() => running.current?.controller.abort()}
+            cancel={cancel}
+          />
+        ))}
+      </ul>
+      {!visible.length && !query.error && (
+        <p className="py-4 text-center text-xs text-muted-foreground">
+          {query.isPending
+            ? tx("正在读取上传任务…")
+            : tx(entries.length ? "当前筛选下没有上传任务" : "没有上传的任务")}
+        </p>
+      )}
+    </>
+  )
+  const queueTrigger = (
+    <Button
+      size="icon-sm"
+      className="relative"
+      aria-label={tx("上传队列")}
+      onPointerEnter={
+        isMobile
+          ? undefined
+          : (event) => {
               if (event.pointerType === "mouse") {
                 clearTimeout(closeTimer.current)
                 onOpenChange(true)
               }
-            }}
-            onPointerLeave={() => {
+            }
+      }
+      onPointerLeave={
+        isMobile
+          ? undefined
+          : () => {
               closeTimer.current = setTimeout(() => onOpenChange(false), 250)
-            }}
-          >
-            {active ? (
-              <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
-            ) : (
-              <ListIcon />
-            )}
-            {active && (
-              <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary-foreground" />
-            )}
-          </Button>
-        </PopoverTrigger>
-      </div>
+            }
+      }
+    >
+      {active ? (
+        <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
+      ) : (
+        <ListIcon />
+      )}
+      {active && (
+        <span className="absolute right-1 top-1 size-1.5 rounded-full bg-primary-foreground" />
+      )}
+    </Button>
+  )
+  const controls = (trigger: ReactNode) => (
+    <ButtonGroup aria-label={tx("上传")}>
+      <Button
+        size="sm"
+        disabled={!storageId || clearing}
+        onClick={() => {
+          destination.current = { storageId, prefix: defaultPrefix }
+          picker.current?.click()
+        }}
+      >
+        <UploadIcon data-icon="inline-start" aria-hidden="true" />
+        {tx("上传")}
+      </Button>
+      <ButtonGroupSeparator />
+      {trigger}
+    </ButtonGroup>
+  )
+  const pickerInput = (
+    <input
+      ref={picker}
+      type="file"
+      multiple
+      className="hidden"
+      aria-label={tx("添加文件到上传队列")}
+      onChange={(event) => {
+        addFiles(event.target.files)
+        event.target.value = ""
+      }}
+    />
+  )
+
+  if (isMobile) {
+    return (
+      <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+        {controls(
+          <ResponsiveDialogTrigger asChild>
+            {queueTrigger}
+          </ResponsiveDialogTrigger>,
+        )}
+        {pickerInput}
+        <ResponsiveDialogContent className="max-h-[85svh]">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{tx("上传队列")}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription className="sr-only">
+              {tx("上传队列")}
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogBody className="flex min-h-0 flex-col gap-1 p-3">
+            {queueBody}
+          </ResponsiveDialogBody>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
+    )
+  }
+
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      {controls(<PopoverTrigger asChild>{queueTrigger}</PopoverTrigger>)}
+      {pickerInput}
       <PopoverContent
         align="end"
         sideOffset={8}
@@ -338,80 +473,7 @@ export function UploadControl({
             <XIcon />
           </Button>
         </div>
-        {entries.length > 0 && (
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <AnimatedSegmentedTabs
-              label={tx("上传队列")}
-              value={filter}
-              onValueChange={setFilter}
-              listClassName="h-8"
-              triggerClassName="px-2 text-xs"
-              options={[
-                { value: "all", label: tx("全部") },
-                { value: "pending", label: tx("未完成") },
-                { value: "completed", label: tx("已完成") },
-              ]}
-            />
-            <div className="flex items-center gap-0.5">
-              {active && (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  title={tx("全部暂停")}
-                  aria-label={tx("全部暂停")}
-                  disabled={clearing}
-                  onClick={pauseAll}
-                >
-                  <PauseIcon />
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-busy={clearing}
-                disabled={clearing || cancelling !== null}
-                onClick={() => void clearAll()}
-              >
-                <SweepShine active={clearing}>{tx("清空")}</SweepShine>
-              </Button>
-            </div>
-          </div>
-        )}
-        {query.error && (
-          <p role="alert" className="text-xs text-destructive">
-            {tx("未完成任务读取失败：")}
-            {tx(query.error.message)}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void query.refetch()}
-            >
-              {tx("重试")}
-            </Button>
-          </p>
-        )}
-        <ul className="max-h-[45svh] divide-y overflow-y-auto">
-          {visible.map((entry) => (
-            <UploadTask
-              key={entry.key}
-              entry={entry}
-              clearing={clearing}
-              cancelling={cancelling}
-              update={update}
-              onPause={() => running.current?.controller.abort()}
-              cancel={cancel}
-            />
-          ))}
-        </ul>
-        {!visible.length && !query.error && (
-          <p className="py-4 text-center text-xs text-muted-foreground">
-            {query.isPending
-              ? tx("正在读取上传任务…")
-              : tx(
-                  entries.length ? "当前筛选下没有上传任务" : "没有上传的任务",
-                )}
-          </p>
-        )}
+        {queueBody}
       </PopoverContent>
     </Popover>
   )

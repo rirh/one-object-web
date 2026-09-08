@@ -1,4 +1,5 @@
 import {
+  Building2Icon,
   CircleUserRoundIcon,
   ClipboardListIcon,
   Code2Icon,
@@ -34,9 +35,9 @@ export type NavigationGroup = {
 const localNavigation: Record<string, { icon: LucideIcon; id: string }> = {
   "/dashboard": { icon: LayoutDashboardIcon, id: "home" },
   "/dashboard/files": { icon: FilesIcon, id: "files" },
-  "/dashboard/keys": { icon: KeyRoundIcon, id: "keys" },
+  "/dashboard/authorizations": { icon: KeyRoundIcon, id: "authorizations" },
   "/dashboard/buckets": { icon: DatabaseIcon, id: "buckets" },
-  "/dashboard/storage": { icon: DatabaseIcon, id: "storage" },
+  "/dashboard/storage": { icon: Building2Icon, id: "storage" },
   "/dashboard/integration": { icon: Code2Icon, id: "integration" },
   "/dashboard/admin?section=users": { icon: UsersRoundIcon, id: "admin-users" },
   "/dashboard/admin?section=roles": {
@@ -92,7 +93,8 @@ function navigationItems(
     items.push({
       href: route.path,
       icon:
-        (route.meta.icon !== "#"
+        (route.meta.icon !== "#" &&
+        !(local.id === "storage" && route.meta.icon === "database")
           ? findMenuIconOption(route.meta.icon)?.Icon
           : undefined) ?? local.icon,
       id: local.id,
