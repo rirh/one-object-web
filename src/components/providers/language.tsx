@@ -20,7 +20,7 @@ export function LanguageProvider({ children }: React.PropsWithChildren) {
 
   const t = React.useCallback(
     (key: MessageKey) => translate(locale, key),
-    [locale]
+    [locale],
   )
   const value = React.useMemo(() => ({ locale, setLocale, t }), [locale, t])
 

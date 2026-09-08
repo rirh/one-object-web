@@ -6,7 +6,10 @@ import { ChevronRightIcon, FolderOpenIcon } from "lucide-react"
 
 import { NoItems } from "@/components/async-state"
 import { cn } from "@/lib/utils"
-import { PROVIDERS, type StorageConnection } from "@/views/dashboard/storage/api"
+import {
+  PROVIDERS,
+  type StorageConnection,
+} from "@/views/dashboard/storage/api"
 
 type FileFolderViewProps = {
   connections: StorageConnection[]

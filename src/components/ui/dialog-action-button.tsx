@@ -120,14 +120,14 @@ function shortcutKeys(shortcut: ShortcutKind) {
 
 function useComposedButtonRef(
   buttonRef: React.MutableRefObject<HTMLButtonElement | null>,
-  forwardedRef: React.Ref<HTMLButtonElement> | undefined
+  forwardedRef: React.Ref<HTMLButtonElement> | undefined,
 ) {
   return React.useCallback(
     (node: HTMLButtonElement | null) => {
       buttonRef.current = node
       setRef(forwardedRef, node)
     },
-    [buttonRef, forwardedRef]
+    [buttonRef, forwardedRef],
   )
 }
 
@@ -205,12 +205,12 @@ function matchesShortcut(event: KeyboardEvent, shortcut: DialogActionKind) {
 function getActiveShortcutButton(
   ownerDocument: Document,
   shortcut: DialogActionKind,
-  topLayer: Element | null
+  topLayer: Element | null,
 ) {
   const buttons = Array.from(
     ownerDocument.querySelectorAll<HTMLButtonElement>(
-      `[data-dialog-shortcut="${shortcut}"]`
-    )
+      `[data-dialog-shortcut="${shortcut}"]`,
+    ),
   ).filter(isElementActionable)
   const scopedButtons = topLayer
     ? buttons.filter((button) => topLayer.contains(button))
@@ -225,8 +225,8 @@ function getTopDialogLayer(ownerDocument: Document) {
         "[data-slot='alert-dialog-content']",
         "[data-slot='dialog-content']",
         "[data-slot='drawer-content']",
-      ].join(",")
-    )
+      ].join(","),
+    ),
   ).filter(isElementVisible)
   return layers.at(-1) ?? null
 }

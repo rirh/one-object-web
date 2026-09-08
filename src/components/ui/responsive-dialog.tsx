@@ -52,7 +52,7 @@ function ResponsiveDialog({
 
 function ResponsiveDialogTrigger(
   props: React.ComponentProps<typeof DialogTrigger> &
-    React.ComponentProps<typeof DrawerTrigger>
+    React.ComponentProps<typeof DrawerTrigger>,
 ) {
   const mode = useResponsiveDialogMode()
   return mode === "drawer" ? (
@@ -64,7 +64,7 @@ function ResponsiveDialogTrigger(
 
 function ResponsiveDialogClose(
   props: React.ComponentProps<typeof DialogClose> &
-    React.ComponentProps<typeof DrawerClose>
+    React.ComponentProps<typeof DrawerClose>,
 ) {
   const mode = useResponsiveDialogMode()
   return mode === "drawer" ? (
@@ -91,7 +91,7 @@ function ResponsiveDialogContent({
       <DrawerContent
         className={cn(
           "max-h-[90svh] overflow-hidden p-0 data-[vaul-drawer-direction=bottom]:max-h-[90svh]",
-          className
+          className,
         )}
         {...props}
       >
@@ -134,7 +134,7 @@ function ResponsiveDialogHeader({
     <Header
       className={cn(
         "shrink-0 gap-0.5 bg-muted/50 px-4 py-2 pr-12 text-left",
-        className
+        className,
       )}
       {...props}
     />
@@ -151,7 +151,7 @@ function ResponsiveDialogBody({
       className={cn(
         "min-h-0 p-4",
         mode === "drawer" && "flex-1 overflow-y-auto",
-        className
+        className,
       )}
       data-slot="responsive-dialog-body"
       {...props}
@@ -176,7 +176,7 @@ function ResponsiveDialogFooter({
 
 function ResponsiveDialogTitle(
   props: React.ComponentProps<typeof DialogTitle> &
-    React.ComponentProps<typeof DrawerTitle>
+    React.ComponentProps<typeof DrawerTitle>,
 ) {
   const mode = useResponsiveDialogMode()
   return mode === "drawer" ? (

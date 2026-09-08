@@ -44,8 +44,8 @@ function disableTransitionsTemporarily() {
   const style = document.createElement("style")
   style.appendChild(
     document.createTextNode(
-      "*,*::before,*::after{-webkit-transition:none!important;transition:none!important}"
-    )
+      "*,*::before,*::after{-webkit-transition:none!important;transition:none!important}",
+    ),
   )
   document.head.appendChild(style)
 
@@ -83,7 +83,7 @@ export function ThemeProvider({
       localStorage.setItem(storageKey, nextTheme)
       setThemeState(nextTheme)
     },
-    [storageKey]
+    [storageKey],
   )
 
   const applyTheme = React.useCallback(
@@ -101,7 +101,7 @@ export function ThemeProvider({
         restoreTransitions()
       }
     },
-    [disableTransitionOnChange]
+    [disableTransitionOnChange],
   )
 
   React.useEffect(() => {
@@ -152,7 +152,7 @@ export function ThemeProvider({
       resolvedTheme,
       setTheme,
     }),
-    [theme, resolvedTheme, setTheme]
+    [theme, resolvedTheme, setTheme],
   )
 
   return (

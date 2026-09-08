@@ -51,7 +51,7 @@ export function AnimatedSegmentedTabs<TValue extends string = string>({
   const hasMeasuredRef = React.useRef(false)
   const optionValues = React.useMemo(
     () => options.map((option) => option.value).join("\u0000"),
-    [options]
+    [options],
   )
 
   React.useLayoutEffect(() => {
@@ -66,7 +66,7 @@ export function AnimatedSegmentedTabs<TValue extends string = string>({
       }
       triggerRefs.current.delete(optionValue)
     },
-    []
+    [],
   )
 
   const moveHighlight = React.useCallback(
@@ -100,7 +100,7 @@ export function AnimatedSegmentedTabs<TValue extends string = string>({
         ease: "power3.out",
       })
     },
-    []
+    [],
   )
 
   React.useLayoutEffect(() => {
@@ -114,7 +114,7 @@ export function AnimatedSegmentedTabs<TValue extends string = string>({
     }
 
     const observer = new ResizeObserver(() =>
-      moveHighlight(valueRef.current, false)
+      moveHighlight(valueRef.current, false),
     )
     observer.observe(list)
     triggerRefs.current.forEach((trigger) => observer.observe(trigger))
@@ -151,7 +151,7 @@ export function AnimatedSegmentedTabs<TValue extends string = string>({
         data-slot="animated-segmented-tabs-list"
         className={cn(
           "relative inline-flex h-8 w-fit items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground",
-          listClassName
+          listClassName,
         )}
       >
         <span
@@ -160,7 +160,7 @@ export function AnimatedSegmentedTabs<TValue extends string = string>({
           data-slot="animated-segmented-tabs-highlight"
           className={cn(
             "pointer-events-none absolute top-0 left-0 z-0 rounded-md bg-background opacity-0 shadow-sm ring-1 ring-foreground/5 will-change-transform",
-            highlightClassName
+            highlightClassName,
           )}
         />
         <TooltipProvider>
@@ -174,7 +174,7 @@ export function AnimatedSegmentedTabs<TValue extends string = string>({
                 data-slot="animated-segmented-tabs-trigger"
                 className={cn(
                   "relative z-10 inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-3 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-colors outline-none hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 data-[state=active]:text-foreground data-active:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-                  triggerClassName
+                  triggerClassName,
                 )}
               >
                 {option.label}

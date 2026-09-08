@@ -13,7 +13,7 @@ export function DefaultUserAvatar({
 }) {
   const config = React.useMemo(
     () => genConfig(normalizeDefaultUserAvatarSeed(seed)),
-    [seed]
+    [seed],
   )
 
   return (

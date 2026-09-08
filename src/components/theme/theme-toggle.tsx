@@ -81,7 +81,7 @@ export function ThemeToggle() {
     const y = rect.top + rect.height / 2
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
+      Math.max(y, window.innerHeight - y),
     )
     const ratioX = (100 * x) / window.innerWidth
     const ratioY = (100 * y) / window.innerHeight
@@ -112,7 +112,7 @@ export function ThemeToggle() {
               nextTheme === "dark"
                 ? "::view-transition-old(root)"
                 : "::view-transition-new(root)",
-          }
+          },
         )
       })
       .catch(() => undefined)

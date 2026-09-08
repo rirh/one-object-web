@@ -9,7 +9,7 @@ export type LanguageContextValue = {
 }
 
 export const LanguageContext = React.createContext<LanguageContextValue | null>(
-  null
+  null,
 )
 
 export function useLanguage() {

@@ -7,7 +7,7 @@ export class HttpError extends Error {
     status: number,
     message: string,
     details: unknown = null,
-    contentType = ""
+    contentType = "",
   ) {
     super(message)
     this.name = "HttpError"
@@ -24,7 +24,7 @@ export type RootResponse<T> = {
 
 export function rootRequest<T>(path: string, init?: RequestInit) {
   return request<T>(rootRelativeUrl(path), init).then(
-    (response) => response.body
+    (response) => response.body,
   )
 }
 
@@ -34,7 +34,7 @@ export function rootRequestWithStatus<T>(path: string, init?: RequestInit) {
 
 async function request<T>(
   url: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
 ): Promise<RootResponse<T>> {
   const headers = new Headers(init.headers)
   headers.set("Accept", "application/json")
@@ -60,7 +60,7 @@ async function request<T>(
       response.status,
       readErrorMessage(response, body),
       body,
-      response.headers.get("content-type") ?? ""
+      response.headers.get("content-type") ?? "",
     )
   }
 
@@ -99,7 +99,7 @@ async function parseBody(response: Response): Promise<unknown> {
     } catch {
       throw new HttpError(
         response.status,
-        `HTTP ${response.status} returned invalid JSON`
+        `HTTP ${response.status} returned invalid JSON`,
       )
     }
   }
@@ -120,7 +120,7 @@ function readErrorMessage(response: Response, body: unknown) {
 }
 
 function isProblemDetails(
-  body: unknown
+  body: unknown,
 ): body is { title: string; detail?: string } {
   return (
     typeof body === "object" &&
