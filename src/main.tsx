@@ -1,4 +1,5 @@
 import { RouteProgress } from "@/components/route-progress"
+import { AppUpdateChecker } from "@/components/providers/app-update-checker"
 import { BuildInfo } from "@/components/build-info"
 import { LanguageProvider } from "@/components/providers/language"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <ThemeProvider storageKey="one-object:theme">
             <TooltipProvider>
               <BuildInfo />
+              <AppUpdateChecker />
               <BrowserRouter>
                 <RouteProgress />
                 <App />

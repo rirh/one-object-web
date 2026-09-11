@@ -1,3 +1,5 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
+import { DialogClose, DialogFooter } from "@/components/ui/dialog"
 import { useMemo } from "react"
 import { atom, useAtom } from "jotai"
 import { DownloadIcon, XIcon } from "lucide-react"
@@ -105,6 +107,13 @@ export function ImagePreviewDialog({
             <XIcon />
           </Button>
         </header>
+        <DialogFooter>
+          <DialogClose asChild>
+            <DialogActionButton action="cancel" type="button">
+              关闭
+            </DialogActionButton>
+          </DialogClose>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

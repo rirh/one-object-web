@@ -261,7 +261,7 @@ export function UsersPanel({ permissions }: { permissions: string[] }) {
         isLoading={users.isPending}
         isFetching={users.isFetching}
         error={users.error}
-        onRefresh={() => void users.refetch()}
+        onRefresh={() => users.refetch()}
         onCreate={
           permissions.includes("object:user:create")
             ? () => setEditor({ kind: "create" })

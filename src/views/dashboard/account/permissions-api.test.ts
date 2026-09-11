@@ -30,7 +30,7 @@ describe("dashboard menu groups", () => {
     expect(routes.map((route) => route.meta.title)).toEqual([
       "files",
       "系统管理",
-      "系统日志",
+      "审计日志",
     ])
     expect(routes[1].children?.map((route) => route.path)).toEqual([
       "/dashboard/admin?section=users",

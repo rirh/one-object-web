@@ -223,7 +223,7 @@ export default function StoragePage() {
         isLoading={query.isPending}
         isFetching={query.isFetching || refreshing}
         error={query.error}
-        onRefresh={() => void reloadAccounts()}
+        onRefresh={() => reloadAccounts()}
         onRefreshAnimationIteration={finishRefreshRotation}
         onCreate={canWrite ? () => setEditor("new") : undefined}
         onRowClick={canWrite ? (account) => setEditor(account) : undefined}

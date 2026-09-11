@@ -59,3 +59,9 @@ Vite 从 package.json 读取应用名称和版本，可使用 `VITE_APP_NAME`、
 - 页面弹窗和列定义留在各自 `components/`，语言消息按语言及上传职责拆分。
 - `useLocalAtom` 为组件实例建立独立 Jotai 状态；表单、URL、服务端状态仍由各自原有机制管理。
 - `pnpm check:structure` 检查源码与测试的单文件 500 行上限（包含 TS、TSX 和 CSS）。
+
+## 网页更新检测
+
+生产构建通过 `public/app-update-checker.worker.js` 对固定应用首页发起 `HEAD`（`cache: no-store`），首次记录 ETag，后续 ETag 变化才提示刷新；不比较版本号或 Last-Modified。缺少 ETag、请求失败均不提示更新；HEAD 不受支持时回退 GET。
+
+打开页面、返回可见标签页、网络恢复和页面可见时每分钟检查一次。开发模式禁用检查；点击更新后刷新，未保存内容需先保存。后端为首页 HEAD 返回基于实际 HTML 内容的 SHA-256 ETag；独立静态托管或代理也必须保留首页 ETag。

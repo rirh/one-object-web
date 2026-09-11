@@ -114,7 +114,7 @@ export function LogsPanel({ kind }: { kind: "login" | "operation" }) {
         isLoading={logs.isPending}
         isFetching={logs.isFetching}
         error={logs.error}
-        onRefresh={() => void logs.refetch()}
+        onRefresh={() => logs.refetch()}
         emptyLabel={tx("暂无日志")}
         getRowId={(l) => l.id}
       />

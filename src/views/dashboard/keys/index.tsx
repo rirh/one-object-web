@@ -241,7 +241,7 @@ export default function KeysPage() {
           isLoading={query.isPending}
           onCreate={canCreate ? () => setDialog({ kind: "create" }) : undefined}
           createLabel={tx("新增授权")}
-          onRefresh={() => void query.refetch()}
+          onRefresh={() => query.refetch()}
           onSearchChange={setSearch}
           onStatusFilterChange={setStatusFilter}
           stackedToolbar

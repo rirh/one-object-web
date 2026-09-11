@@ -1,8 +1,9 @@
+import { RefreshButton } from "@/components/refresh-button"
 import type { Table as TanStackTable } from "@tanstack/react-table"
 import {
   ChevronDownIcon,
-  ListCollapseIcon,
-  ListTreeIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   PlusIcon,
   RefreshCwIcon,
   SearchIcon,
@@ -25,14 +26,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+
 import { cn } from "@/lib/utils"
 import { getColumnMeta } from "@/views/dashboard/admin/components/shared/resource-table/helpers"
 
@@ -57,7 +51,7 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
   searchPlaceholder,
   searchValue,
   statusFilter,
-  statusFilterControl,
+  statusFilterControl: _statusFilterControl,
   statusFilterLabel,
   stackedToolbar,
   table,
@@ -88,38 +82,12 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
 }) {
   const filterControl =
     filterOptions.length > 0 ? (
-      statusFilterControl === "select" ? (
-        <Select
-          onValueChange={(value) => onStatusFilterChange(value as TFilter)}
-          value={statusFilter}
-        >
-          <SelectTrigger
-            aria-label={
-              statusFilterLabel ?? (zh ? "状态筛选" : "Status filter")
-            }
-            className="w-32"
-            size="sm"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {filterOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      ) : (
-        <AnimatedSegmentedTabs
-          label={statusFilterLabel ?? (zh ? "状态筛选" : "Status filter")}
-          value={statusFilter}
-          onValueChange={onStatusFilterChange}
-          options={filterOptions}
-        />
-      )
+      <AnimatedSegmentedTabs
+        label={statusFilterLabel ?? (zh ? "状态筛选" : "Status filter")}
+        value={statusFilter}
+        onValueChange={onStatusFilterChange}
+        options={filterOptions}
+      />
     ) : null
   const searchControl = (
     <InputGroup className="w-full max-w-sm sm:w-80">
@@ -136,20 +104,32 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
   )
   const toolbarControls = (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={isFetching}
-        onClick={onRefresh}
-      >
-        <RefreshCwIcon
-          data-icon="inline-start"
-          className={cn(isFetching && "animate-spin")}
-          onAnimationIteration={onRefreshAnimationIteration}
-        />
-        {zh ? "刷新" : "Refresh"}
-      </Button>
+      {onRefreshAnimationIteration ? (
+        <Button
+          className="order-last"
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isFetching}
+          onClick={onRefresh}
+        >
+          <RefreshCwIcon
+            data-icon="inline-start"
+            className={cn(isFetching && "animate-spin")}
+            onAnimationIteration={onRefreshAnimationIteration}
+          />
+          {zh ? "刷新" : "Refresh"}
+        </Button>
+      ) : (
+        <RefreshButton
+          variant="outline"
+          size="sm"
+          disabled={isFetching}
+          onClick={onRefresh}
+        >
+          {zh ? "刷新" : "Refresh"}
+        </RefreshButton>
+      )}
       {onCreate ? (
         <Button type="button" size="sm" onClick={onCreate}>
           <PlusIcon data-icon="inline-start" />
@@ -164,9 +144,9 @@ export function ResourceTableToolbar<TData, TFilter extends string>({
           onClick={onToggleExpanded}
         >
           {allRowsExpanded ? (
-            <ListCollapseIcon data-icon="inline-start" />
+            <ChevronsDownUpIcon data-icon="inline-start" />
           ) : (
-            <ListTreeIcon data-icon="inline-start" />
+            <ChevronsUpDownIcon data-icon="inline-start" />
           )}
           {allRowsExpanded
             ? zh

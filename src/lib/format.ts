@@ -22,7 +22,7 @@ export const date = (seconds: number) => dateTime(fromUnixTime(seconds))
 export function relativeTime(value: string | Date, now: Date, locale: Locale) {
   const parsed = typeof value === "string" ? parseISO(value) : value
   if (!isValid(parsed)) return "—"
-  if (parsed <= subMonths(now, 1) || parsed > now) {
+  if (parsed < subMonths(now, 1) || parsed > now) {
     return format(parsed, "yyyy-MM-dd HH:mm")
   }
   return formatDistanceStrict(parsed, now, {

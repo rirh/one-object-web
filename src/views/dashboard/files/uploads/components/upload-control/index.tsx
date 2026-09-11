@@ -1,3 +1,8 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
+import {
+  ResponsiveDialogClose,
+  ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog"
 import { useLocalAtom } from "@/hooks/use-local-atom"
 import { UploadTask } from "./upload-task"
 import { SweepShine } from "@/components/sweep-shine"
@@ -441,6 +446,13 @@ export function UploadControl({
           <ResponsiveDialogBody className="flex min-h-0 flex-col gap-1 p-3">
             {queueBody}
           </ResponsiveDialogBody>
+          <ResponsiveDialogFooter>
+            <ResponsiveDialogClose asChild>
+              <DialogActionButton action="cancel" type="button">
+                关闭
+              </DialogActionButton>
+            </ResponsiveDialogClose>
+          </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
       </ResponsiveDialog>
     )

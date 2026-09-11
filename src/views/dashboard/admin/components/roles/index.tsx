@@ -223,7 +223,7 @@ export function RolesPanel({
             ? () => setEditor({ kind: "create" })
             : undefined
         }
-        onRefresh={() => void roles.refetch()}
+        onRefresh={() => roles.refetch()}
         onSearchChange={setSearch}
         onStatusFilterChange={setStatusFilter}
         renderRowActions={(role) => (

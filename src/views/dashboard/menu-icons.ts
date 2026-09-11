@@ -107,7 +107,7 @@ export const menuIconOptions: ReadonlyArray<MenuIconOption> = [
   icon("users", "用户", "Users", "organization", UsersIcon),
   icon("file-text", "文档", "Document", "content", FileTextIcon),
   icon("clipboard-list", "操作日志", "Audit log", "content", ClipboardListIcon),
-  icon("scroll-text", "系统日志", "System log", "content", ScrollTextIcon),
+  icon("scroll-text", "审计日志", "Audit log", "content", ScrollTextIcon),
   icon("list-tree", "树列表", "Tree", "content", ListTreeIcon),
   icon("folder", "目录", "Folder", "content", FolderIcon),
   icon("database", "数据", "Database", "content", DatabaseIcon),

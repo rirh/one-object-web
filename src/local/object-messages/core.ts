@@ -392,7 +392,7 @@ export const core = {
   甲骨文云: "Oracle Cloud",
   对象存储: "Object storage",
   系统管理: "Administration",
-  系统日志: "System logs",
+  审计日志: "Audit logs",
   文件管理: "Files",
   存储配置: "Storage configuration",
   厂商管理: "Providers",

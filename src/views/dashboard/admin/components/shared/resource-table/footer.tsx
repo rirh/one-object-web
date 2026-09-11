@@ -1,34 +1,13 @@
 import type { Table as TanStackTable } from "@tanstack/react-table"
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-  Trash2Icon,
-  XIcon,
-} from "lucide-react"
-
-import { PAGE_SIZE_OPTIONS } from "@/lib/pagination"
+import { Trash2Icon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { PageButton } from "@/views/dashboard/admin/components/shared/resource-table/parts"
+import { TablePagination } from "@/components/table-pagination"
 
 export function ResourceTableFooter<TData>({
-  compact,
-  firstRow,
   isBulkDeleting,
   isFetching,
-  lastRow,
   onBulkDelete,
-  pageCount,
   pageIndex,
   pageSize,
   selectedRecords,
@@ -55,69 +34,15 @@ export function ResourceTableFooter<TData>({
   return (
     <>
       {showPaginationFooter ? (
-        <div
-          className={cn(
-            "flex shrink-0 flex-col gap-2 border-t bg-muted px-3 sm:flex-row sm:items-center sm:justify-between lg:px-4",
-            compact ? "py-1.5" : "py-2",
-          )}
-        >
-          <span className="text-sm text-muted-foreground">
-            {zh
-              ? `第 ${firstRow}-${lastRow} 项，共 ${totalRows} 项`
-              : `${firstRow}-${lastRow} of ${totalRows}`}
-            {isFetching ? (zh ? " · 更新中" : " · Updating") : ""}
-          </span>
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            <Select
-              value={String(pageSize)}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger size="sm" className="w-20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {PAGE_SIZE_OPTIONS.map((value) => (
-                    <SelectItem key={value} value={String(value)}>
-                      {zh ? `${value} 条` : `${value} rows`}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <PageButton
-              label={zh ? "第一页" : "First page"}
-              disabled={!table.getCanPreviousPage()}
-              onClick={() => table.setPageIndex(0)}
-            >
-              <ChevronsLeftIcon />
-            </PageButton>
-            <PageButton
-              label={zh ? "上一页" : "Previous page"}
-              disabled={!table.getCanPreviousPage()}
-              onClick={() => table.previousPage()}
-            >
-              <ChevronLeftIcon />
-            </PageButton>
-            <span className="min-w-20 text-center text-sm text-muted-foreground">
-              {pageIndex + 1} / {pageCount}
-            </span>
-            <PageButton
-              label={zh ? "下一页" : "Next page"}
-              disabled={!table.getCanNextPage()}
-              onClick={() => table.nextPage()}
-            >
-              <ChevronRightIcon />
-            </PageButton>
-            <PageButton
-              label={zh ? "最后一页" : "Last page"}
-              disabled={!table.getCanNextPage()}
-              onClick={() => table.setPageIndex(pageCount - 1)}
-            >
-              <ChevronsRightIcon />
-            </PageButton>
-          </div>
-        </div>
+        <TablePagination
+          total={totalRows}
+          page={pageIndex + 1}
+          pageSize={pageSize}
+          onPageChange={(page) => table.setPageIndex(page - 1)}
+          onPageSizeChange={(size) => table.setPageSize(size)}
+          disabled={isFetching}
+          zh={zh}
+        />
       ) : null}
 
       {selectedRecords.length > 0 ? (

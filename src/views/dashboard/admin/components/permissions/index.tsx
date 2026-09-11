@@ -298,7 +298,7 @@ export function PermissionsPanel({
         onCreate={
           canCreate ? () => setPermissionEditor({ kind: "create" }) : undefined
         }
-        onRefresh={() => void permissions.refetch()}
+        onRefresh={() => permissions.refetch()}
         onRowReorder={
           canReorder && !search.trim() && statusFilter === "all"
             ? (payload) => reorderMutation.mutateAsync(payload)

@@ -113,7 +113,8 @@ function shortcutToneClassName(tone: DialogActionTone) {
 }
 
 function shortcutKeys(shortcut: ShortcutKind) {
-  if (shortcut === "confirm") return ["⌘", "↵"]
+  if (shortcut === "confirm")
+    return [/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl", "↵"]
   if (shortcut === "cancel") return ["Esc"]
   return []
 }

@@ -1,3 +1,8 @@
+import { DialogActionButton } from "@/components/ui/dialog-action-button"
+import {
+  ResponsiveDialogClose,
+  ResponsiveDialogFooter,
+} from "@/components/ui/responsive-dialog"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   ResponsiveDialog,
@@ -294,6 +299,13 @@ export function StorageTree(props: StorageTreeProps) {
             }}
           />
         </div>
+        <ResponsiveDialogFooter>
+          <ResponsiveDialogClose asChild>
+            <DialogActionButton action="cancel" type="button">
+              关闭
+            </DialogActionButton>
+          </ResponsiveDialogClose>
+        </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
   )

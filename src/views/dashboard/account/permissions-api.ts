@@ -51,7 +51,7 @@ export function groupDashboardRoutes(
     },
     {
       id: "system-logs",
-      title: "系统日志",
+      title: "审计日志",
       sections: ["login-events", "operation-logs"],
     },
   ]
