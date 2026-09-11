@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
-export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
+import { PAGE_SIZE_OPTIONS } from "@/lib/pagination"
 export function TablePagination({
   total,
   page,
@@ -22,7 +22,9 @@ export function TablePagination({
   zh?: boolean
 }) {
   if (
-    total !== undefined ? (!Number.isFinite(total) || total < PAGE_SIZE_OPTIONS[0]) : page === 1 && !hasNext
+    total !== undefined
+      ? !Number.isFinite(total) || total < PAGE_SIZE_OPTIONS[0]
+      : page === 1 && !hasNext
   )
     return null
   const pages =
