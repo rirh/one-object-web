@@ -74,7 +74,9 @@ export function BrandSettings() {
       <ResponsiveDialog open={open} onOpenChange={setOpen}>
         <ResponsiveDialogContent>
           <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>{t("品牌 / Logo 设置")}</ResponsiveDialogTitle>
+            <ResponsiveDialogTitle>
+              {t("品牌 / Logo 设置")}
+            </ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
               {t("上传方形图片，作为本站登录页和导航中的品牌图标。")}
             </ResponsiveDialogDescription>

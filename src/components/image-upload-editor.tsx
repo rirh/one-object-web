@@ -3,7 +3,7 @@ import { DialogActionButton } from "@/components/ui/dialog-action-button"
 import { useId, useRef, useState } from "react"
 import { toast } from "sonner"
 import { SweepShine } from "@/components/sweep-shine"
-import CropEditor, { useAvatarEditor } from "react-avatar-editor"
+import CropEditor, { type AvatarEditorRef } from "react-avatar-editor"
 import { UploadIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react"
 import { Slider } from "radix-ui"
 import {
@@ -37,7 +37,7 @@ export function ImageUploadEditor({
   const t = useObjectTranslation()
   const zoomLabel = useId()
   const input = useRef<HTMLInputElement>(null)
-  const editor = useAvatarEditor()
+  const editor = useRef<AvatarEditorRef>(null)
   const [file, setFile] = useState<File | null>(null)
   const [scale, setScale] = useState(1)
   const [ready, setReady] = useState(false)
@@ -45,7 +45,7 @@ export function ImageUploadEditor({
   const mutation = useMutation({
     mutationFn: async () => {
       const file = await new Promise<File>((resolve, reject) => {
-        const canvas = editor.getImageScaledToCanvas()
+        const canvas = editor.current?.getImageScaledToCanvas()
         if (!canvas) return reject(new Error(t("无法读取图片，请重新选择。")))
         canvas.toBlob((blob) => {
           if (!blob) return reject(new Error(t("无法读取图片，请重新选择。")))
@@ -148,7 +148,7 @@ export function ImageUploadEditor({
             >
               {file && (
                 <CropEditor
-                  ref={editor.ref}
+                  ref={editor}
                   image={file}
                   width={240}
                   height={240}
