@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-settings"
 import { cn } from "@/lib/utils"
 
 export function LogoMark({ className }: { className?: string }) {
@@ -9,8 +10,7 @@ export function LogoMark({ className }: { className?: string }) {
         className,
       )}
     >
-      <img
-        src={`${import.meta.env.BASE_URL}one-object-logo.svg`}
+      <BrandLogo
         alt=""
         width={48}
         height={48}
